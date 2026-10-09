@@ -1,7 +1,7 @@
 """SQLAlchemy models. They mirror the tables created by pipeline/load_db.py."""
 from __future__ import annotations
 
-from sqlalchemy import Float, Integer, String, Text
+from sqlalchemy import Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -27,7 +27,7 @@ class Cell(Base):
 
 class CellShap(Base):
     __tablename__ = "cell_shap"
-    cell_id: Mapped[str] = mapped_column(String, primary_key=True)
+    cell_id: Mapped[str] = mapped_column(ForeignKey("cells.cell_id"), primary_key=True)
     rank: Mapped[int] = mapped_column(Integer, primary_key=True)
     feature: Mapped[str] = mapped_column(String)
     feature_value: Mapped[float | None] = mapped_column(Float)
@@ -36,7 +36,7 @@ class CellShap(Base):
 
 class CellScenario(Base):
     __tablename__ = "cell_scenarios"
-    cell_id: Mapped[str] = mapped_column(String, primary_key=True)
+    cell_id: Mapped[str] = mapped_column(ForeignKey("cells.cell_id"), primary_key=True)
     night: Mapped[int] = mapped_column(Integer, primary_key=True)
     rain: Mapped[int] = mapped_column(Integer, primary_key=True)
     low_vis: Mapped[int] = mapped_column(Integer, primary_key=True)

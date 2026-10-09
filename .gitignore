@@ -11,3 +11,4 @@ frontend/.env.local
 *.db-wal
 *.db-shm
 *.before_advice
+files/

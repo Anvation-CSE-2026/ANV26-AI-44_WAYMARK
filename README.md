@@ -230,7 +230,11 @@ Backend settings can be supplied as environment variables or in the root `.env` 
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `WAYMARK_DB` | `waymark.db` in the project root | SQLite database path. |
+| `DATABASE_URL` | Unset (SQLite by default) | PostgreSQL connection URL for production. Use Supabase session pooler for Render when IPv4 connectivity is needed. |
+| `WAYMARK_DB` | `waymark.db` in the project root | Local/test SQLite database path; ignored when `DATABASE_URL` is set. |
+| `SUPABASE_URL` | Unset | Supabase project URL used by the backend Storage API. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Unset | Private server-side key for Storage. Never expose it to the frontend or commit it. |
+| `SUPABASE_STORAGE_BUCKET` | `waymark-files` | Private bucket used for report PDFs and evidence images. |
 | `WAYMARK_DATA_DIR` | `data` | Directory for evidence images and generated report files. |
 | `WAYMARK_JWT_SECRET` | Random value per server start | Signs login tokens. Set a stable secret so sessions survive restarts. |
 | `WAYMARK_JWT_TTL_MIN` | `480` | Login-token lifetime in minutes. |
@@ -309,30 +313,48 @@ Create a Render **Web Service** connected to the repository. Use the repository 
 | Start command | See the persistent-storage command below. |
 | Health check path | `/api/health` |
 
-The supplied app uses SQLite and writes evidence images and generated reports to local disk. Render's default filesystem is ephemeral, so operational changes and uploaded files can be lost on restart or deployment. For persistent storage, attach a Render disk mounted at `/var/data`, then set these environment variables:
+WAYMARK stores production records in Supabase Postgres and report/evidence files in a private Supabase Storage bucket. Render hosts only the API. Local development and tests continue to use SQLite and the local `data/` directory when `DATABASE_URL` is unset.
 
-```text
-WAYMARK_DB=/var/data/waymark.db
-WAYMARK_DATA_DIR=/var/data/data
-```
-
-Use this start command to seed the persistent database from the checked-in `waymark.db` only when the disk does not already contain a database, then start the API on Render's assigned port:
+Before cutover, create a Supabase project and apply the checked-in schema migration from the repository root:
 
 ```sh
-sh -c 'mkdir -p "$WAYMARK_DATA_DIR"; if [ ! -f "$WAYMARK_DB" ]; then cp waymark.db "$WAYMARK_DB"; fi; exec uvicorn backend.main:app --host 0.0.0.0 --port "$PORT"'
+supabase login
+supabase link --project-ref <your-project-ref>
+supabase db push --linked
 ```
 
-Do not run `pipeline/load_db.py --force` as a deploy command. It rebuilds the database and deletes operational data. A Render disk is attached to one service instance; this SQLite deployment is intended for a single backend instance. Back up the database and the `data/` files regularly. See Render's [FastAPI deployment guide](https://render.com/docs/deploy-fastapi) and [persistent disk documentation](https://render.com/docs/disks).
-
-Configure the following in the Render service dashboard. Set `WAYMARK_CORS_ORIGINS` to the exact production Vercel origin, such as `https://waymark.example`, without a trailing slash. Add preview origins only if they are needed.
+On Render, configure these environment variables in the service dashboard. Use the Supabase **session pooler** connection string for Render if its outbound network needs IPv4; the backend accepts `postgresql://` and uses the `psycopg` driver. Keep the service-role key private. The application creates the `waymark-files` bucket as private during import if it does not exist.
 
 ```text
+DATABASE_URL=<Supabase session-pooler PostgreSQL URL>
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<server-only service-role key>
+SUPABASE_STORAGE_BUCKET=waymark-files
 WAYMARK_CORS_ORIGINS=https://<your-vercel-domain>
 WAYMARK_JWT_SECRET=<a-long-random-secret>
 WAYMARK_DEMO_MODE=0
 ```
 
-Also set any required assistant provider variables, such as `WAYMARK_LLM_PROVIDER=groq` and `GROQ_API_KEY`. Configure secrets in Render's environment settings; do not commit them. Replace bundled demo passwords before enabling accounts for real users. The Render filesystem, persistent disk behavior, and available plans may change; consult the current [Render Web Service](https://render.com/docs/web-services) and [disk limitations](https://render.com/docs/disks) documentation.
+The backend uses its existing JWT accounts and authorization; Supabase Auth is not involved. Authenticated API routes proxy private files, so browsers never receive the service-role key or public object URLs. Set the Render start command to:
+
+```sh
+uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+```
+
+### Import existing local data
+
+Keep the checked-in `waymark.db` and `data/` as the pre-cutover local backup. First review what would be copied with a dry run, using an environment configured for the target Supabase project only when ready to apply:
+
+```sh
+python pipeline/migrate_to_supabase.py --sqlite waymark.db --data-dir data
+python pipeline/migrate_to_supabase.py --sqlite waymark.db --data-dir data --apply
+```
+
+The importer preserves primary keys, skips rows already present on repeat runs, migrates ready report PDFs and evidence images/thumbnails, and resets PostgreSQL sequences. It refuses to apply unless the schema exists and the estimated database size stays below Supabase Free's 500 MB database limit. After import, review actual database size and total Storage usage in the Supabase dashboard; confirm Storage stays below the Free 1 GB quota before pointing Render at the project. `files/` presentations and videos are not part of the migration.
+
+After cutover, new production writes go only to Supabase. The checked-in SQLite database and local `data/` remain a pre-cutover snapshot and do not receive later writes. To roll back without losing production activity, export the current Postgres database and Storage objects and restore them to a compatible persistent service. Supabase Free projects can pause after a week of low activity and do not include automatic backups, so schedule and verify regular database and file exports.
+
+Do not run `pipeline/load_db.py --force` against production. It rebuilds the local SQLite pipeline database and deletes operational tables. Use it only for local data builds; rerun the importer deliberately when you need to seed a Supabase project from a new SQLite build. Render's filesystem is ephemeral on Free instances; see the [Render Free instance documentation](https://render.com/docs/free), [Supabase pricing and quotas](https://supabase.com/pricing), [project pausing policy](https://supabase.com/docs/guides/platform/free-project-pausing), and [database size limits](https://supabase.com/docs/guides/platform/database-size).
 
 ### Deploy the frontend to Vercel
 

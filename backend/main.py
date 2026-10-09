@@ -14,9 +14,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .config import settings
 from .config_loader import get_effects
-from .db import DB_PATH, configure_sqlite, engine
+from .db import DB_PATH, IS_SQLITE, configure_sqlite, engine, validate_postgres_schema
 from .localities import ensure_locality_indexes
 from .models_ops import create_ops_tables
+from .storage import validate_storage_configuration
 from .routes import (audit, auth, cells, chat, crashes, evidence, measures, places, regions, reports, system,
                      validation, whatif)
 
@@ -26,10 +27,13 @@ log = logging.getLogger("waymark")
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     get_effects()                                  # refuse to start on a malformed effects.json
-    if DB_PATH.exists():                           # never let SQLite create an empty database by accident
+    validate_storage_configuration()
+    if IS_SQLITE and DB_PATH is not None and DB_PATH.exists():
         configure_sqlite()                         # configure concurrency before serving requests
         ensure_locality_indexes(engine)             # make locality autocomplete prefix searches index-backed
-        create_ops_tables(engine)                  # new tables only; existing tables are left alone
+        create_ops_tables(engine)                  # local SQLite compatibility only
+    elif not IS_SQLITE:
+        validate_postgres_schema()                 # Postgres schema is managed by versioned migrations
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     yield
 

@@ -57,7 +57,7 @@ class Measure(Base):
 class MeasureCell(Base):
     __tablename__ = "measure_cells"
     measure_id: Mapped[int] = mapped_column(ForeignKey("measures.id"), primary_key=True)
-    cell_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    cell_id: Mapped[str] = mapped_column(ForeignKey("cells.cell_id"), primary_key=True, index=True)
 
 
 class Evidence(Base):

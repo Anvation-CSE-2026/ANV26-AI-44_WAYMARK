@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -23,6 +23,7 @@ from ..models_ops import Evidence as EvidenceRow, MeasureCell, utcnow
 from ..ops_common import api_error
 from ..permissions import require_permission
 from ..schemas_ops import Evidence, EvidenceKind
+from ..storage import delete_object, get_object, put_object
 
 router = APIRouter(prefix="/api", tags=["evidence"])
 log = logging.getLogger("waymark.evidence")
@@ -78,12 +79,11 @@ def upload_evidence(measure_id: int, request: Request, file: UploadFile = File(.
     flag = geo_flag(processed.gps, points)
 
     stem = uuid.uuid4().hex
-    folder = evidence_dir(m.id)
-    folder.mkdir(parents=True, exist_ok=True)
     file_name, thumb_name = f"{stem}.jpg", f"{stem}_thumb.jpg"
-    (folder / file_name).write_bytes(processed.image_jpeg)
-    (folder / thumb_name).write_bytes(processed.thumb_jpeg)
+    object_keys = [f"evidence/{m.id}/{file_name}", f"evidence/{m.id}/{thumb_name}"]
     try:
+        put_object(object_keys[0], processed.image_jpeg, "image/jpeg")
+        put_object(object_keys[1], processed.thumb_jpeg, "image/jpeg")
         row = EvidenceRow(measure_id=m.id, kind=kind.value, file_name=file_name, thumb_name=thumb_name, sha256=digest,
                           caption=clean_caption(caption) or caption_from_filename(file.filename), exif_taken_at=processed.taken,
                           geo_flag=flag, stale_photo=is_stale(processed.taken), uploaded_by=user.id, created_at=utcnow())
@@ -96,35 +96,46 @@ def upload_evidence(measure_id: int, request: Request, file: UploadFile = File(.
         db.commit()
     except IntegrityError:
         db.rollback()
-        (folder / file_name).unlink(missing_ok=True)
-        (folder / thumb_name).unlink(missing_ok=True)
+        _delete_uploaded(object_keys)
         raise api_error(409, "duplicate_evidence", "This exact photo was already uploaded for this measure.")
     except Exception:
         db.rollback()
-        (folder / file_name).unlink(missing_ok=True)
-        (folder / thumb_name).unlink(missing_ok=True)
+        _delete_uploaded(object_keys)
         raise
     return evidence_to_schema(row)
 
 
-def _evidence_path(db: Session, evidence_id: int, thumb: bool) -> tuple[Path, EvidenceRow]:
+def _delete_uploaded(keys: list[str]) -> None:
+    for key in keys:
+        try:
+            delete_object(key)
+        except Exception:
+            log.warning("Could not clean up evidence object after a failed upload.")
+
+
+def _evidence_object(db: Session, evidence_id: int, thumb: bool) -> tuple[str, EvidenceRow]:
     row = db.get(EvidenceRow, evidence_id)
     if row is None:
         raise HTTPException(404, "Evidence not found.")
-    folder = evidence_dir(row.measure_id).resolve()
-    path = (folder / (row.thumb_name if thumb else row.file_name)).resolve()
-    if folder not in path.parents or not path.is_file():           # the name is server-made; this is belt and braces
-        raise HTTPException(404, "The photo file is missing on the server.")
-    return path, row
+    name = row.thumb_name if thumb else row.file_name
+    return f"evidence/{row.measure_id}/{name}", row
 
 
 @router.get("/evidence/{evidence_id}/file")
 def evidence_file(evidence_id: int, db: Session = Depends(get_db), user: User = Depends(require_permission("evidence.read"))):
-    path, _ = _evidence_path(db, evidence_id, thumb=False)
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+    key, _ = _evidence_object(db, evidence_id, thumb=False)
+    try:
+        content = get_object(key)
+    except FileNotFoundError:
+        raise HTTPException(404, "The photo file is missing on the server.") from None
+    return Response(content, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
 
 
 @router.get("/evidence/{evidence_id}/thumb")
 def evidence_thumb(evidence_id: int, db: Session = Depends(get_db), user: User = Depends(require_permission("evidence.read"))):
-    path, _ = _evidence_path(db, evidence_id, thumb=True)
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+    key, _ = _evidence_object(db, evidence_id, thumb=True)
+    try:
+        content = get_object(key)
+    except FileNotFoundError:
+        raise HTTPException(404, "The photo file is missing on the server.") from None
+    return Response(content, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})

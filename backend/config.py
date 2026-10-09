@@ -95,6 +95,10 @@ def _origins() -> list[str]:
 
 @dataclass
 class Settings:
+    database_url: str | None = field(default_factory=lambda: os.getenv("DATABASE_URL") or None)
+    supabase_url: str | None = field(default_factory=lambda: os.getenv("SUPABASE_URL") or None)
+    supabase_service_role_key: str | None = field(default_factory=lambda: os.getenv("SUPABASE_SERVICE_ROLE_KEY") or None)
+    supabase_storage_bucket: str = field(default_factory=lambda: os.getenv("SUPABASE_STORAGE_BUCKET", "waymark-files"))
     jwt_secret: str = field(default_factory=_jwt_secret)
     jwt_ttl_min: int = field(default_factory=lambda: _int("WAYMARK_JWT_TTL_MIN", 480))
     demo_mode: bool = field(default_factory=lambda: _flag("WAYMARK_DEMO_MODE", True))

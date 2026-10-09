@@ -22,6 +22,7 @@ from ..permissions import require_permission
 from ..regions import _cells_by_ids, analyse_region, data_version, resolve_region
 from ..reports.builder import build_report, new_report_id, payload_text, render_pdf
 from ..schemas_ops import SCHEMA_VERSION, RegionReport, ReportCreate, ReportStatus, ReportSummary
+from ..storage import delete_object, get_object, put_object, remote_storage_enabled
 
 router = APIRouter(prefix="/api", tags=["reports"])
 log = logging.getLogger("waymark.reports")
@@ -56,7 +57,13 @@ def generate_report(engine: Engine, report_id: str) -> None:
             version = data_version(_cells_by_ids(db, resolved.cell_ids))
             report = build_report(report_id, analysis, version, placeholder_weights())
             rel = Path("reports") / f"{report_id}.pdf"
-            render_pdf(report, settings.data_dir / rel)
+            local_pdf = settings.data_dir / rel
+            render_pdf(report, local_pdf)
+            if remote_storage_enabled():
+                try:
+                    put_object(rel.as_posix(), local_pdf.read_bytes(), "application/pdf")
+                finally:
+                    local_pdf.unlink(missing_ok=True)
             row.payload_json = payload_text(report)
             row.pdf_path = rel.as_posix()
             row.data_version = version
@@ -104,10 +111,15 @@ def get_report(report_id: str, db: Session = Depends(get_db), user: User = Depen
 @router.get("/reports/{report_id}/pdf")
 def download_pdf(report_id: str, db: Session = Depends(get_db), user: User = Depends(require_permission("report.read"))):
     row = _get_row(db, report_id)
-    path = (settings.data_dir / row.pdf_path) if row.status == "ready" and row.pdf_path else None
-    if path is None or not path.is_file():
+    if row.status != "ready" or not row.pdf_path:
         raise HTTPException(404, "The PDF for this report is not available.")
-    return FileResponse(path, media_type="application/pdf", filename=f"{row.report_id}.pdf")
+    try:
+        content = get_object(row.pdf_path)
+    except FileNotFoundError:
+        raise HTTPException(404, "The PDF for this report is not available.") from None
+    return Response(content, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{row.report_id}.pdf"',
+                             "Cache-Control": "private, max-age=3600"})
 
 
 @router.get("/reports/{report_id}/json")

@@ -17,18 +17,23 @@ LOCALITY_KINDS = ("City", "County", "ZIP code", "Street")
 def locality_groups(db: Session, term: str, *, prefix: bool = False) -> dict[tuple[str, str], dict]:
     """Aggregate matching crash localities in SQLite instead of transferring each crash row."""
     pattern = f"{term}%" if prefix else f"%{term}%"
+    postgres = db.bind is not None and db.bind.dialect.name == "postgresql"
     fields = (("City", Crash.city), ("County", Crash.county),
               ("ZIP code", Crash.zipcode), ("Street", Crash.street))
     statements = []
     for kind, column in fields:
-        # NOCASE matches the existing case-insensitive behavior and lets prefix
-        # lookups use the locality indexes created during startup.
-        predicate = column.collate("NOCASE").like(pattern) if prefix else column.ilike(pattern)
+        # The case-insensitive predicate has a matching functional index on PostgreSQL;
+        # SQLite keeps its NOCASE prefix search and existing index behavior.
+        predicate = func.lower(column).like(pattern.lower()) if postgres else (
+            column.collate("NOCASE").like(pattern) if prefix else column.ilike(pattern)
+        )
+        cell_ids = (func.string_agg(func.distinct(Crash.cell_id), ",") if postgres
+                    else func.group_concat(func.distinct(Crash.cell_id)))
         statements.append(
             select(
                 literal(kind).label("kind"), column.label("name"),
                 func.count().label("crash_count"),
-                func.group_concat(func.distinct(Crash.cell_id)).label("cell_ids"),
+                cell_ids.label("cell_ids"),
                 func.min(Crash.lat).label("south"), func.min(Crash.lng).label("west"),
                 func.max(Crash.lat).label("north"), func.max(Crash.lng).label("east"),
             )
@@ -63,12 +68,18 @@ def ensure_locality_indexes(engine: Engine) -> None:
 
     if not inspect(engine).has_table(Crash.__tablename__):
         return
+    postgres = engine.dialect.name == "postgresql"
     with engine.begin() as connection:
         for column in ("city", "county", "zipcode", "street"):
-            connection.exec_driver_sql(
-                f"CREATE INDEX IF NOT EXISTS ix_crashes_{column}_nocase "
-                f"ON crashes ({column} COLLATE NOCASE)"
-            )
+            if postgres:
+                connection.exec_driver_sql(
+                    f"CREATE INDEX IF NOT EXISTS ix_crashes_{column}_lower ON crashes (lower({column}))"
+                )
+            else:
+                connection.exec_driver_sql(
+                    f"CREATE INDEX IF NOT EXISTS ix_crashes_{column}_nocase "
+                    f"ON crashes ({column} COLLATE NOCASE)"
+                )
 
 
 def find_locality(db: Session, key: str) -> tuple[str, str, dict] | None:

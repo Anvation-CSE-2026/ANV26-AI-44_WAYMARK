@@ -24,7 +24,7 @@ from sqlalchemy import select  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from backend.config_loader import placeholder_weights  # noqa: E402
-from backend.db import DB_PATH, engine  # noqa: E402
+from backend.db import DB_PATH, IS_SQLITE, engine  # noqa: E402
 from backend.main import app  # noqa: E402
 from backend.models import Cell  # noqa: E402
 from backend.regions import _cells_by_ids, analyse_region, data_version, resolve_region  # noqa: E402
@@ -34,7 +34,7 @@ SAMPLE_ID = "WMK-20261008-5A3B1E"
 
 
 def main() -> None:
-    if not DB_PATH.exists():
+    if IS_SQLITE and (DB_PATH is None or not DB_PATH.exists()):
         sys.exit(f"Database not found at {DB_PATH}. Run: python pipeline/load_db.py")
     out = ROOT / "contracts"
     out.mkdir(exist_ok=True)
