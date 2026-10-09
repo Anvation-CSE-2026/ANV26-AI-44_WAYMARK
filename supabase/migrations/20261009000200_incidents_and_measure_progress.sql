@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.incident_reports (
   lng DOUBLE PRECISION NOT NULL CHECK (lng BETWEEN -180 AND 180),
   occurred_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
   severity INTEGER CHECK (severity BETWEEN 1 AND 4),
+  reasons JSONB,
   note VARCHAR(1000),
   status VARCHAR NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
   reported_by VARCHAR NOT NULL,

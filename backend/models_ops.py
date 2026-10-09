@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, inspect
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, inspect
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -140,6 +140,7 @@ class IncidentReport(Base):
     lng: Mapped[float] = mapped_column(Float)
     occurred_at: Mapped[datetime] = mapped_column(DateTime)
     severity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reasons: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     status: Mapped[str] = mapped_column(String, default="pending", index=True)  # pending / confirmed / rejected
     reported_by: Mapped[str] = mapped_column(String, index=True)

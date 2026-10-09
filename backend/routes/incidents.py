@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api", tags=["incidents"])
 def _out(row: IncidentReport) -> IncidentReportOut:
     return IncidentReportOut(
         id=row.id, kind=row.kind, cell_id=row.cell_id, lat=row.lat, lng=row.lng,
-        occurred_at=iso_req(row.occurred_at), severity=row.severity, note=row.note,
+        occurred_at=iso_req(row.occurred_at), severity=row.severity, reasons=row.reasons, note=row.note,
         status=row.status, review_note=row.review_note,
         created_at=iso_req(row.created_at))
 
@@ -43,6 +43,7 @@ def create_incident(body: IncidentReportIn, db: Session = Depends(get_db),
         occurred = occurred.astimezone(timezone.utc).replace(tzinfo=None)
     row = IncidentReport(kind=body.kind, cell_id=cell_id, lat=body.lat, lng=body.lng, occurred_at=occurred,
                          severity=body.severity if body.kind == "crash" else None,
+                         reasons=[reason.strip() for reason in (body.reasons or []) if reason.strip()] or None,
                          note=(body.note or "").strip() or None, status="pending", reported_by=user.id,
                          created_at=utcnow(), updated_at=utcnow())
     db.add(row)

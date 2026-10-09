@@ -27,7 +27,7 @@ Identify locations that may merit earlier investigation, including places with l
 | Frontend hosting | Vercel static deployment; Vite output directory: `frontend/dist/` |
 | Backend | FastAPI application in `backend/`, served with Uvicorn |
 | Backend hosting | Render Web Service |
-| Database | SQLite (`waymark.db`) with scored cells and operational data |
+| Database | Supabase Postgres in production; SQLite is available for local development |
 | Runtime files | Evidence images and generated report files in `data/` by default |
 | Study area | Houston, Texas, using H3 cells |
 | Data source | US Accidents (2016–2023), attributed to Sobhan Moosavi and collaborators |
@@ -74,7 +74,6 @@ The current scored dataset covers Houston, Texas, using H3 hexagonal cells. The 
 | `contracts/` | Sample report payload and API schema snapshot used for reference and frontend fixtures. |
 | `out/` | Model artifacts, scores, metrics, quality results, and exported tables used to build the database. |
 | `data/` | Runtime report PDFs and evidence images. This directory may contain user-generated data. |
-| `waymark.db` | SQLite application database containing scored cells, model evidence, and operational records. |
 | `handoff/` | Project handoff report and sample deliverables. |
 
 The frontend and backend have separate READMEs with implementation-specific details: [frontend/README.md](frontend/README.md) and [main_page/README.md](main_page/README.md).
@@ -83,7 +82,7 @@ The frontend and backend have separate READMEs with implementation-specific deta
 
 - Python 3.11 or later, using versions supported by the libraries in `requirements.txt`.
 - Node.js and npm compatible with the Vite version in `frontend/package.json` (Node.js 20 or later is recommended).
-- The supplied `waymark.db` and `out/` artifacts to run the application as provided.
+- The generated `out/` artifacts; run `python pipeline/load_db.py` to create a local `waymark.db` when using SQLite development mode.
 - Optional: a Groq or Anthropic API key for model-backed assistant responses.
 - Optional: a MapTiler API key for alternate map styles. OpenStreetMap tiles work without an application key.
 

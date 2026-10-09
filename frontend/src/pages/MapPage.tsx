@@ -360,15 +360,15 @@ export default function MapPage() {
         <BaseMapSwitch names={BASE_LAYERS.map((l) => l.name)} value={base.name} onChange={pickBase} />
       </div>
 
-      {isTrafficPolice && <button type="button" onClick={() => setPickIncidentMode((v) => !v)} aria-pressed={pickIncidentMode}
-        aria-label={pickIncidentMode ? 'Cancel incident location selection' : 'Report a crash or near miss'}
-        className={`absolute bottom-4 left-2 z-[1050] inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold shadow-card md:bottom-auto md:left-auto md:right-4 md:top-16 ${pickIncidentMode ? 'bg-brass text-navy' : 'bg-navy text-ivory'}`}>
-        <MapPin aria-hidden="true" className="h-4 w-4" /> {pickIncidentMode ? 'Cancel report' : 'Report incident'}
-      </button>}
-      {pickIncidentMode && <p role="status" className="pointer-events-none absolute left-1/2 top-14 z-[1040] -translate-x-1/2 rounded-full bg-navy px-3 py-2 text-center text-xs font-semibold text-ivory shadow-card md:top-24">Tap map to place report</p>}
+      {pickIncidentMode && <p role="status" className="pointer-events-none absolute bottom-4 left-1/2 z-[1040] -translate-x-1/2 rounded-full bg-navy px-3 py-2 text-center text-xs font-semibold text-ivory shadow-card md:bottom-auto md:top-24">Tap map to place report</p>}
 
       {/* Map status and details control stay together in the top-right control row. */}
-      <div className="absolute right-2 top-14 z-[1060] flex max-w-[calc(100%-1rem)] items-center gap-2 md:right-4 md:top-4">
+      <div className="absolute right-2 top-14 z-[1060] flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-2 md:right-4 md:top-4">
+        {isTrafficPolice && <button type="button" onClick={() => setPickIncidentMode((v) => !v)} aria-pressed={pickIncidentMode}
+          aria-label={pickIncidentMode ? 'Cancel incident location selection' : 'Report a crash or near miss'}
+          className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold shadow-card ${pickIncidentMode ? 'bg-brass text-navy' : 'bg-navy text-ivory'}`}>
+          <MapPin aria-hidden="true" className="h-4 w-4" /> {pickIncidentMode ? 'Cancel report' : 'Report incident'}
+        </button>}
         {region ? (
           <button
             type="button"

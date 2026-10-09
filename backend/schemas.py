@@ -228,6 +228,7 @@ class IncidentReportIn(BaseModel):
     lng: float = Field(ge=-180, le=180)
     occurred_at: datetime
     severity: Optional[int] = Field(default=None, ge=1, le=4)
+    reasons: Optional[list[str]] = Field(default=None, max_length=8)
     note: Optional[str] = Field(default=None, max_length=1000)
 
 
@@ -244,6 +245,7 @@ class IncidentReportOut(BaseModel):
     lng: float
     occurred_at: str
     severity: Optional[int]
+    reasons: Optional[list[str]]
     note: Optional[str]
     status: Literal["pending", "confirmed", "rejected"]
     review_note: Optional[str] = None

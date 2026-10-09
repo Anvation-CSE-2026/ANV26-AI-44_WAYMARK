@@ -638,6 +638,7 @@ export interface IncidentReport {
   lng: number
   occurred_at: string
   severity: number | null
+  reasons: string[] | null
   note: string | null
   status: IncidentStatus
   review_note: string | null
@@ -685,7 +686,8 @@ export const api = {
       const lat = num(o.lat), lng = num(o.lng), id = num(o.id)
       if (lat === null || lng === null || id === null) return []
       return [{ id, kind: str(o.kind, 'crash') as IncidentKind, cell_id: str(o.cell_id), lat, lng,
-        occurred_at: str(o.occurred_at), severity: num(o.severity), note: o.note == null ? null : str(o.note),
+        occurred_at: str(o.occurred_at), severity: num(o.severity), reasons: Array.isArray(o.reasons) ? o.reasons.map(String) : null,
+        note: o.note == null ? null : str(o.note),
         status: str(o.status, 'pending') as IncidentStatus, review_note: o.review_note == null ? null : str(o.review_note),
         created_at: str(o.created_at) }]
     })

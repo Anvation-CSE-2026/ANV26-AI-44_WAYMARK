@@ -224,9 +224,9 @@ export async function mockRequest(method: string, path: string, req: MockReq): P
     }
     if (b === undefined && method === 'POST') {
       if (u.role !== 'community') return err(403, 'Only Traffic Police can submit incident reports.', 'forbidden')
-      const body = req.json as { kind: 'crash' | 'near_miss'; lat: number; lng: number; occurred_at: string; severity?: number; note?: string }
+      const body = req.json as { kind: 'crash' | 'near_miss'; lat: number; lng: number; occurred_at: string; severity?: number; reasons?: string[]; note?: string }
       const row: IncidentReport = { id: ++nextId, kind: body.kind, cell_id: baseReport.analysis.hotspots[0]?.cell_id ?? '', lat: body.lat, lng: body.lng,
-        occurred_at: body.occurred_at, severity: body.kind === 'crash' ? body.severity ?? null : null, note: body.note ?? null,
+        occurred_at: body.occurred_at, severity: body.kind === 'crash' ? body.severity ?? null : null, reasons: body.reasons ?? null, note: body.note ?? null,
         status: 'pending', review_note: null, created_at: nowIso() }
       incidentReports.unshift(row)
       incidentReportOwners.set(row.id, u.id)

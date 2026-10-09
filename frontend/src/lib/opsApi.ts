@@ -89,7 +89,7 @@ export const opsApi = {
     const result = as<{ items: IncidentReport[] }>(raw, 'incident list', has('items'))
     return result.items
   },
-  createIncident: async (body: { kind: 'crash' | 'near_miss'; lat: number; lng: number; occurred_at: string; severity?: number; note?: string }) =>
+  createIncident: async (body: { kind: 'crash' | 'near_miss'; lat: number; lng: number; occurred_at: string; severity?: number; reasons?: string[]; note?: string }) =>
     as<IncidentReport>(await postJson('/api/incidents', body), 'incident report', has('id', 'status', 'cell_id')),
   reviewIncident: async (id: number, body: { decision: 'confirm' | 'reject'; note?: string }) =>
     as<IncidentReport>(await postJson(`/api/incidents/${id}/review`, body), 'incident review', has('id', 'status', 'cell_id')),

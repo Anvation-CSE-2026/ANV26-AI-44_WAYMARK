@@ -5,8 +5,16 @@ import type { IncidentKind } from '../../lib/api'
 interface Props {
   point: [number, number]
   onClose: () => void
-  onSubmit: (body: { kind: IncidentKind; lat: number; lng: number; occurred_at: string; severity?: number; note?: string }) => Promise<void>
+  onSubmit: (body: { kind: IncidentKind; lat: number; lng: number; occurred_at: string; severity?: number; reasons?: string[]; note?: string }) => Promise<void>
 }
+
+const reasonOptions = [
+  ['traffic', 'Traffic conditions'],
+  ['night_lighting', 'Night lighting'],
+  ['visibility', 'Reduced visibility'],
+  ['weather', 'Rain or weather'],
+  ['traffic_signal', 'Traffic signal or crossing'],
+] as const
 
 function localDateTime() {
   const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
@@ -17,6 +25,7 @@ export function IncidentReportDialog({ point, onClose, onSubmit }: Props) {
   const [kind, setKind] = useState<IncidentKind>('crash')
   const [occurredAt, setOccurredAt] = useState(localDateTime)
   const [severity, setSeverity] = useState('')
+  const [reasons, setReasons] = useState<string[]>([])
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -41,7 +50,7 @@ export function IncidentReportDialog({ point, onClose, onSubmit }: Props) {
     setBusy(true); setError('')
     try {
       await onSubmit({ kind, lat: point[0], lng: point[1], occurred_at: new Date(occurredAt).toISOString(),
-        ...(kind === 'crash' && severity ? { severity: Number(severity) } : {}), ...(note.trim() ? { note: note.trim() } : {}) })
+        ...(kind === 'crash' && severity ? { severity: Number(severity) } : {}), ...(reasons.length ? { reasons } : {}), ...(note.trim() ? { note: note.trim() } : {}) })
       onClose()
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not submit this report.') }
     finally { setBusy(false) }
@@ -58,6 +67,7 @@ export function IncidentReportDialog({ point, onClose, onSubmit }: Props) {
           <label className="text-sm font-semibold">Report type<select value={kind} onChange={(e) => setKind(e.target.value as IncidentKind)} className="mt-1 min-h-11 w-full rounded-lg border border-navy/25 bg-white px-3"><option value="crash">Crash</option><option value="near_miss">Near miss</option></select></label>
           <label className="text-sm font-semibold">Date and time<input required type="datetime-local" value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-navy/25 px-3" /></label>
           {kind === 'crash' && <label className="text-sm font-semibold">Severity, if known<select value={severity} onChange={(e) => setSeverity(e.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-navy/25 bg-white px-3"><option value="">Unknown</option><option value="1">1 · Minor</option><option value="2">2 · Moderate</option><option value="3">3 · Serious</option><option value="4">4 · Critical</option></select></label>}
+          <fieldset className="sm:col-span-2"><legend className="text-sm font-semibold">Possible contributing factors <span className="font-normal text-navy/60">(optional)</span></legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{reasonOptions.map(([value, label]) => <label key={value} className="flex min-h-11 items-center gap-2 rounded-lg border border-navy/15 px-3 text-sm font-medium"><input type="checkbox" checked={reasons.includes(value)} onChange={(e) => setReasons((current) => e.target.checked ? [...current, value] : current.filter((reason) => reason !== value))} className="h-4 w-4 accent-brass" />{label}</label>)}</div></fieldset>
           <label className="text-sm font-semibold sm:col-span-2">Short operational note <span className="font-normal text-navy/60">(optional)</span><textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-lg border border-navy/25 px-3 py-2" placeholder="Road condition or observed safety context" /></label>
         </div>
         {error && <p role="alert" className="mt-3 rounded-lg bg-brick/10 p-3 text-sm font-semibold text-brick">{error}</p>}
