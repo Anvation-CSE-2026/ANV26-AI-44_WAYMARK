@@ -367,49 +367,61 @@ export default function MapPage() {
       </button>}
       {pickIncidentMode && <p role="status" className="pointer-events-none absolute left-1/2 top-14 z-[1040] -translate-x-1/2 rounded-full bg-navy px-3 py-2 text-center text-xs font-semibold text-ivory shadow-card md:top-24">Tap map to place report</p>}
 
-      {/* Detail level hint, or the way out of region view */}
-      {region ? (
-        <button
-          type="button"
-          onClick={() => setRegion(null)}
-          className="absolute right-2 top-14 z-[1000] rounded-full bg-brass px-4 py-1.5 text-sm font-semibold text-navy shadow-card hover:brightness-95 md:right-4 md:top-4"
-        >
-          {regionCells.length} cells · All regions ×
-        </button>
-      ) : placeSearch ? (
-        <button
-          type="button"
-          onClick={() => setPlaceSearch(null)}
-          className="absolute right-2 top-14 z-[1000] rounded-full bg-brass px-4 py-1.5 text-sm font-semibold text-navy shadow-card hover:brightness-95 md:right-4 md:top-4"
-        >
-          {placeSearch.name} · {displayedCells.length} cells · Clear ×
-        </button>
-      ) : (
-        <div className="pointer-events-none absolute right-4 top-4 z-[1000] hidden rounded-full bg-navy/90 px-4 py-1.5 text-sm font-semibold text-ivory shadow-card md:block">
-          {level.points
-            ? crashesAvailable === false
-              ? 'Cells · crash points unavailable'
-              : 'Cells + crash points'
-            : level.grouped
-              ? 'Grouped cells · zoom to open'
-              : 'Single cells · zoom for crashes'}
-        </div>
-      )}
+      {/* Map status and details control stay together in the top-right control row. */}
+      <div className="absolute right-2 top-14 z-[1060] flex max-w-[calc(100%-1rem)] items-center gap-2 md:right-4 md:top-4">
+        {region ? (
+          <button
+            type="button"
+            onClick={() => setRegion(null)}
+            className="max-w-[min(55vw,24rem)] truncate rounded-full bg-brass px-3 py-1.5 text-xs font-semibold text-navy shadow-card hover:brightness-95 sm:text-sm"
+          >
+            {regionCells.length} cells · All regions ×
+          </button>
+        ) : placeSearch ? (
+          <button
+            type="button"
+            onClick={() => setPlaceSearch(null)}
+            title={`${placeSearch.name} · ${displayedCells.length} cells · Clear`}
+            className="max-w-[min(55vw,24rem)] truncate rounded-full bg-brass px-3 py-1.5 text-xs font-semibold text-navy shadow-card hover:brightness-95 sm:text-sm"
+          >
+            {placeSearch.name} · {displayedCells.length} cells · Clear ×
+          </button>
+        ) : (
+          <div className="max-w-[min(55vw,18rem)] truncate rounded-full bg-navy/90 px-3 py-1.5 text-xs font-semibold text-ivory shadow-card sm:text-sm">
+            {level.points
+              ? crashesAvailable === false
+                ? 'Cells · crash points unavailable'
+                : 'Cells + crash points'
+              : level.grouped
+                ? 'Grouped cells · zoom to open'
+                : 'Single cells · zoom for crashes'}
+          </div>
+        )}
+        {(reportTarget || selectedId) && <button type="button" onClick={() => {
+          const opening = !rightPaneOpen
+          setRightPaneOpen(opening)
+          if (opening && window.matchMedia('(max-width: 767px)').matches) setLeftPaneOpen(false)
+        }} aria-expanded={rightPaneOpen}
+          aria-label={rightPaneOpen ? 'Hide map details' : selectedId ? 'Show cell details' : 'Show region report'}
+          title={rightPaneOpen ? 'Hide details' : selectedId ? 'Cell details' : 'Region report'}
+          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-navy/20 bg-white px-2.5 py-1.5 text-xs font-semibold text-navy shadow-card sm:text-sm">
+          {rightPaneOpen ? <PanelRightClose aria-hidden="true" className="h-4 w-4" /> : <PanelRightOpen aria-hidden="true" className="h-4 w-4" />} {rightPaneOpen ? 'Hide' : selectedId ? 'Details' : 'Report'}
+        </button>}
+      </div>
 
-      <button
+      {!leftPaneOpen && <button
         type="button"
         onClick={() => {
-          const opening = !leftPaneOpen
-          setLeftPaneOpen(opening)
-          if (opening && window.matchMedia('(max-width: 767px)').matches) setRightPaneOpen(false)
+          setLeftPaneOpen(true)
+          if (window.matchMedia('(max-width: 767px)').matches) setRightPaneOpen(false)
         }}
-        aria-expanded={leftPaneOpen}
-        aria-label={leftPaneOpen ? 'Hide map filters and legend' : 'Show map filters and legend'}
-        title={leftPaneOpen ? 'Hide filters' : 'Filters and legend'}
+        aria-expanded={false}
+        aria-label="Show map filters and legend"
+        title="Filters and legend"
         className="absolute left-2 top-2 z-[1060] inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-navy px-3 py-2 text-sm font-semibold text-ivory shadow-card"
       >
-        <SlidersHorizontal aria-hidden="true" className="h-4 w-4" /> {leftPaneOpen ? 'Hide' : 'Filters'}
-      </button>
+        <SlidersHorizontal aria-hidden="true" className="h-4 w-4" /> Filters
+      </button>}
 
       {/* Left column: filters, what-if, legend */}
       <div
@@ -417,6 +429,7 @@ export default function MapPage() {
       >
         <div className="pointer-events-auto">
           <FilterCard
+            onCollapse={() => setLeftPaneOpen(false)}
             summary={summaryQ.data}
             filters={filters}
             onChange={setFilters}
@@ -456,20 +469,9 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Selected-region report and cell details share the right-side pane. */}
-      {(reportTarget || selectedId) && <button type="button" onClick={() => {
-        const opening = !rightPaneOpen
-        setRightPaneOpen(opening)
-        if (opening && window.matchMedia('(max-width: 767px)').matches) setLeftPaneOpen(false)
-      }} aria-expanded={rightPaneOpen}
-        aria-label={rightPaneOpen ? 'Hide map details' : selectedId ? 'Show cell details' : 'Show region report'}
-        title={rightPaneOpen ? 'Hide details' : selectedId ? 'Cell details' : 'Region report'}
-        className="absolute bottom-[calc(55dvh+0.75rem)] right-2 z-[1060] inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-navy/20 bg-white px-3 py-2 text-sm font-semibold text-navy shadow-card md:bottom-auto md:top-4 md:right-[28rem]">
-        {rightPaneOpen ? <PanelRightClose aria-hidden="true" className="h-4 w-4" /> : <PanelRightOpen aria-hidden="true" className="h-4 w-4" />} {rightPaneOpen ? 'Hide' : selectedId ? 'Details' : 'Report'}
-      </button>}
       {(reportTarget || selectedId) && rightPaneOpen && (
         <div className={`pointer-events-none absolute inset-x-2 z-[1000] flex flex-col gap-3 md:inset-x-auto md:right-4 md:w-[26rem] ${
-          selectedId ? 'bottom-2 h-[55dvh] max-h-[520px] min-h-[280px] md:bottom-4 md:top-4 md:h-auto md:max-h-none' : 'top-14 bottom-2 md:top-4'
+          selectedId ? 'bottom-2 h-[55dvh] max-h-[520px] min-h-[280px] md:bottom-4 md:top-16 md:h-auto md:max-h-none' : 'top-24 bottom-2 md:top-16'
         }`}>
           {reportTarget && (
             <div className="pointer-events-auto shrink-0">

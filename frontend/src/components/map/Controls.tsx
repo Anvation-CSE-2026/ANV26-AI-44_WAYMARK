@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, FileText, Info } from 'lucide-react'
+import { ChevronDown, FileText, Info, PanelLeftClose } from 'lucide-react'
 import type { Confidence, PlaceSearchItem, Summary } from '../../lib/api'
 import { fmtInt, fmtPts } from '../../lib/format'
 import { Card } from '../ui'
@@ -31,6 +31,7 @@ function Chip({ label, value }: { label: string; value: number | null }) {
 }
 
 interface FilterCardProps {
+  onCollapse: () => void
   summary: Summary | null
   filters: Filters
   onChange: (f: Filters) => void
@@ -42,6 +43,7 @@ interface FilterCardProps {
 }
 
 export function FilterCard({
+  onCollapse,
   summary,
   filters,
   onChange,
@@ -136,7 +138,18 @@ export function FilterCard({
 
   return (
     <Card className="p-3">
-      <h2 className="font-serif text-lg font-bold">Explore cells</h2>
+      <div className="flex min-h-9 items-center justify-between gap-2">
+        <h2 className="font-serif text-lg font-bold">Explore cells</h2>
+        <button
+          type="button"
+          onClick={onCollapse}
+          aria-label="Collapse filters and legend"
+          title="Collapse filters"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-navy/75 transition hover:bg-navy/5 hover:text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brass"
+        >
+          <PanelLeftClose aria-hidden="true" className="h-5 w-5" />
+        </button>
+      </div>
 
       {summary && (
         <div className="mt-2 grid grid-cols-3 gap-1.5">
