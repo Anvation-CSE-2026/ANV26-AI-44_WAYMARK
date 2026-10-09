@@ -13,6 +13,8 @@ Identify locations that may merit earlier investigation, including places with l
 
 [Features](#features) · [At a glance](#at-a-glance) · [Setup](#local-setup) · [Deployment](#deployment) · [Limitations](#limitations-and-responsible-use)
 
+**Live demo:** [Open WAYMARK](https://waymark-frontend.onrender.com/)
+
 </div>
 
 > Decision support only. Human experts decide. Risk scores are estimates from historical records, not predictions or engineering findings.
