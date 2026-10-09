@@ -1,0 +1,18 @@
+[
+  {
+    "title": "Review junction layout and sight lines at the top hotspot",
+    "category": "junction_layout",
+    "status": "in_progress",
+    "owner_role": "engineer",
+    "created_by": "demo-engineer",
+    "hotspots": [0]
+  },
+  {
+    "title": "Audit the three highest-scoring cells",
+    "category": "site_safety_audit",
+    "status": "planned",
+    "owner_role": "planner",
+    "created_by": "demo-community",
+    "hotspots": [0, 1, 2]
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "all_cells": {
+    "cells": 8275,
+    "positive_rate": 0.283987915407855,
+    "auc_model": 0.8762509381452553,
+    "auc_history_baseline": 0.8723088248496275,
+    "precision_top5_model": 0.9854721549636803,
+    "precision_top5_baseline": 0.9854721549636803,
+    "capture_top10_model": 0.33063829787234045,
+    "capture_top10_baseline": 0.3272340425531915
+  },
+  "low_history_cells": {
+    "cells": 2416,
+    "positive_rate": 0.03849337748344371,
+    "auc_model": 0.6596586727396443,
+    "auc_history_baseline": 0.5946704067321178,
+    "precision_top5_model": 0.08333333333333333,
+    "precision_top5_baseline": 0.058333333333333334,
+    "capture_top10_model": 0.23655913978494625,
+    "capture_top10_baseline": 0.10752688172043011
+  }
+}

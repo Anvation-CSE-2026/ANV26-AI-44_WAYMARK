@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Audit the top-ranked hotspot cells",
+    "category": "site_safety_audit",
+    "owner_role": "planner",
+    "hotspots": [0, 1, 2],
+    "rationale": "These are the highest-scoring cells in the region according to the report's hotspot table.",
+    "evidence_needed": ["after"]
+  },
+  {
+    "title": "Review lighting and reflective signage at the busiest night-time cells",
+    "category": "street_lighting",
+    "owner_role": "engineer",
+    "hotspots": [0, 3],
+    "rationale": "The report lists these cells among its top hotspots; a night-time site visit can check lamp coverage.",
+    "evidence_needed": ["before", "after"]
+  },
+  {
+    "title": "Check pedestrian crossing visibility near the hotspots",
+    "category": "pedestrian_crossing",
+    "owner_role": "engineer",
+    "hotspots": [1, 2],
+    "rationale": "Crossings near high-scoring cells are worth inspecting for visibility and provision.",
+    "evidence_needed": ["before", "after"]
+  }
+]

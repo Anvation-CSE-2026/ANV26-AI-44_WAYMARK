@@ -1,0 +1,342 @@
+{
+  "report_id": "WMK-20261008-5A3B1E",
+  "schema_version": "1",
+  "generated_at": "2026-10-08T12:00:00Z",
+  "data_version": "d5404871d692b0ec",
+  "analysis": {
+    "region": {
+      "kind": "h3_parent",
+      "key": "87446c32affffff",
+      "name": "H3 region 87446c32affffff (resolution 7)",
+      "cell_count": 44,
+      "bounds": {
+        "south": 29.851093017706432,
+        "west": -95.42613304308009,
+        "north": 29.87323992418527,
+        "east": -95.39897865188476
+      }
+    },
+    "risk_index": 62.83,
+    "risk_index_method": "Mean risk score of the cells in the region (the same aggregation the map uses for grouped hexagons).",
+    "total_crashes": 1697,
+    "emerging_cells": 0,
+    "night_share": 0.2699,
+    "severe_share": 0.3477,
+    "hotspots": [
+      {
+        "cell_id": "89446c32a63ffff",
+        "rank": 1,
+        "base_score": 100.0,
+        "n_past_crashes": 327,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 99.9,
+        "lat": 29.86993691654342,
+        "lng": -95.40786866258992,
+        "locality": "W Little York Rd",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.869937,-95.407869"
+      },
+      {
+        "cell_id": "89446c32a53ffff",
+        "rank": 2,
+        "base_score": 99.9,
+        "n_past_crashes": 233,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 99.8,
+        "lat": 29.85905195604699,
+        "lng": -95.40309096489683,
+        "locality": "I-45 N",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.859052,-95.403091"
+      },
+      {
+        "cell_id": "89446c32a7bffff",
+        "rank": 3,
+        "base_score": 98.9,
+        "n_past_crashes": 124,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 96.9,
+        "lat": 29.86779749618074,
+        "lng": -95.40490516229694,
+        "locality": "I-45 S",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.867797,-95.404905"
+      },
+      {
+        "cell_id": "89446c32a2bffff",
+        "rank": 4,
+        "base_score": 98.2,
+        "n_past_crashes": 124,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 95.1,
+        "lat": 29.87091254546591,
+        "lng": -95.41437048824616,
+        "locality": "N Victory Dr",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.870913,-95.414370"
+      },
+      {
+        "cell_id": "89446c32a77ffff",
+        "rank": 5,
+        "base_score": 95.0,
+        "n_past_crashes": 97,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 86.7,
+        "lat": 29.86877322390806,
+        "lng": -95.4114067237031,
+        "locality": "W Little York Rd",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.868773,-95.411407"
+      },
+      {
+        "cell_id": "89446c32a43ffff",
+        "rank": 6,
+        "base_score": 94.4,
+        "n_past_crashes": 62,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 85.0,
+        "lat": 29.8623550192032,
+        "lng": -95.40251641033304,
+        "locality": "I-45 N",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.862355,-95.402516"
+      },
+      {
+        "cell_id": "89446c32a47ffff",
+        "rank": 7,
+        "base_score": 94.4,
+        "n_past_crashes": 31,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 84.9,
+        "lat": 29.86449446075163,
+        "lng": -95.4054796847442,
+        "locality": "I-45 N",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.864494,-95.405480"
+      },
+      {
+        "cell_id": "89446c32a3bffff",
+        "rank": 8,
+        "base_score": 93.8,
+        "n_past_crashes": 43,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 83.3,
+        "lat": 29.86760940714812,
+        "lng": -95.41494479278708,
+        "locality": " W Little York Rd",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.867609,-95.414945"
+      },
+      {
+        "cell_id": "89446c32a67ffff",
+        "rank": 9,
+        "base_score": 91.3,
+        "n_past_crashes": 76,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 76.6,
+        "lat": 29.8720762968945,
+        "lng": -95.41083232627103,
+        "locality": "I-45 N",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.872076,-95.410832"
+      },
+      {
+        "cell_id": "89446c32a03ffff",
+        "rank": 10,
+        "base_score": 91.0,
+        "n_past_crashes": 30,
+        "confidence": "High",
+        "emerging_risk": false,
+        "risk_vs_similar_history": 75.8,
+        "lat": 29.862166938268,
+        "lng": -95.41255542746198,
+        "locality": "Granville Dr",
+        "google_maps_url": "https://www.google.com/maps/search/?api=1&query=29.862167,-95.412555"
+      }
+    ],
+    "year_trend": [
+      {
+        "year": 2016,
+        "crashes": 187
+      },
+      {
+        "year": 2017,
+        "crashes": 308
+      },
+      {
+        "year": 2018,
+        "crashes": 255
+      },
+      {
+        "year": 2019,
+        "crashes": 221
+      },
+      {
+        "year": 2020,
+        "crashes": 205
+      },
+      {
+        "year": 2021,
+        "crashes": 301
+      },
+      {
+        "year": 2022,
+        "crashes": 207
+      },
+      {
+        "year": 2023,
+        "crashes": 13
+      }
+    ],
+    "hour_of_day": [
+      {
+        "hour": 0,
+        "crashes": 11
+      },
+      {
+        "hour": 1,
+        "crashes": 10
+      },
+      {
+        "hour": 2,
+        "crashes": 8
+      },
+      {
+        "hour": 3,
+        "crashes": 6
+      },
+      {
+        "hour": 4,
+        "crashes": 31
+      },
+      {
+        "hour": 5,
+        "crashes": 59
+      },
+      {
+        "hour": 6,
+        "crashes": 144
+      },
+      {
+        "hour": 7,
+        "crashes": 153
+      },
+      {
+        "hour": 8,
+        "crashes": 142
+      },
+      {
+        "hour": 9,
+        "crashes": 98
+      },
+      {
+        "hour": 10,
+        "crashes": 107
+      },
+      {
+        "hour": 11,
+        "crashes": 105
+      },
+      {
+        "hour": 12,
+        "crashes": 65
+      },
+      {
+        "hour": 13,
+        "crashes": 87
+      },
+      {
+        "hour": 14,
+        "crashes": 91
+      },
+      {
+        "hour": 15,
+        "crashes": 99
+      },
+      {
+        "hour": 16,
+        "crashes": 115
+      },
+      {
+        "hour": 17,
+        "crashes": 103
+      },
+      {
+        "hour": 18,
+        "crashes": 77
+      },
+      {
+        "hour": 19,
+        "crashes": 66
+      },
+      {
+        "hour": 20,
+        "crashes": 46
+      },
+      {
+        "hour": 21,
+        "crashes": 27
+      },
+      {
+        "hour": 22,
+        "crashes": 31
+      },
+      {
+        "hour": 23,
+        "crashes": 16
+      }
+    ],
+    "priority_issues": [
+      {
+        "id": "concentration",
+        "title": "Crash history is concentrated in a few cells",
+        "evidence": [
+          "The 10 highest-scoring cells hold 1,147 of the region's 1,477 past crashes (78%) while being 23% of its cells."
+        ],
+        "cell_ids": [
+          "89446c32a63ffff",
+          "89446c32a53ffff",
+          "89446c32a7bffff",
+          "89446c32a2bffff",
+          "89446c32a77ffff",
+          "89446c32a43ffff",
+          "89446c32a47ffff",
+          "89446c32a3bffff",
+          "89446c32a67ffff",
+          "89446c32a03ffff"
+        ],
+        "category": "site_safety_audit"
+      },
+      {
+        "id": "severity",
+        "title": "A notable share of crashes were severity 3 or higher",
+        "evidence": [
+          "35% of the region's recorded crashes have severity 3 or higher (scale 1 to 4)."
+        ],
+        "cell_ids": [
+          "89446c32a63ffff",
+          "89446c32a53ffff",
+          "89446c32a7bffff",
+          "89446c32a2bffff",
+          "89446c32a77ffff",
+          "89446c32a43ffff",
+          "89446c32a47ffff",
+          "89446c32a3bffff",
+          "89446c32a67ffff",
+          "89446c32a03ffff"
+        ],
+        "category": "speed_management"
+      }
+    ],
+    "caveats": [
+      "Risk scores are model estimates built from historical crash records. They are not predictions of future crashes.",
+      "The region index is the mean of the cells' risk scores; it describes the region as a whole, not any one road.",
+      "Data-quality WARN: 2017 jump (2017 has 30,297 Houston crashes versus 15,566 in 2016 (1.9x). Treat pre-2017 data as not comparable.)",
+      "Data-quality WARN: 2023 partial year (Data for 2023 ends on 2023-03-31 (about 3 of 12 months). 2023 is incomplete and is excluded from yearly comparisons and from model training and testing.)",
+      "Data-quality WARN: Nulls: Precipitation(in) (Houston: 42.94% missing (72,746 of 169,428 rows); all US rows: 28.51%. Thresholds: WARN > 1.00%, FAIL > 10.00%. Fallback: the pipeline also detects rain from Weather_Condition text and treats missing precipitation as 0.)",
+      "Data-quality WARN: Nulls: Temperature(F) (Houston: 1.35% missing (2,293 of 169,428 rows); all US rows: 2.12%. Thresholds: WARN > 1.00%, FAIL > 10.00%. Fallback: loaded but not used as a model feature.)"
+    ]
+  },
+  "placeholder_weights": true,
+  "disclaimer": "These are estimates from historical crash records, not predictions. The adjusted index is an overlay estimate, not a re-run of the risk model."
+}

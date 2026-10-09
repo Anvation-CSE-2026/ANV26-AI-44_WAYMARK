@@ -1,0 +1,23 @@
+{
+  "_note": "Demo accounts only. Passwords are documented in README.md. Regenerate a hash: python -m backend.auth hash <password>",
+  "users": [
+    {
+      "username": "planner",
+      "name": "Priya Planner",
+      "role": "planner",
+      "password_hash": "pbkdf2_sha256$200000$9cceb6a40b0c8bc3383d91f411223ae0$8d48d7d98d433270b58d816baa49e726229677e7d00c302b4cb1cf665dcd0ea4"
+    },
+    {
+      "username": "engineer",
+      "name": "Eli Engineer",
+      "role": "engineer",
+      "password_hash": "pbkdf2_sha256$200000$b6b65266c48cea568ce373491a379fd6$1cff633fc54751b1852791e218fe3474d714e0c5c287332226127a4650e5d9f7"
+    },
+    {
+      "username": "community",
+      "name": "Cam Community",
+      "role": "community",
+      "password_hash": "pbkdf2_sha256$200000$bfe48e710ad5e283ef054ccefc647fc6$06cdcea6877eec3edf4320f8e9aca9153b4dd5e3e0ca1e5e12a17a7487d8dafd"
+    }
+  ]
+}

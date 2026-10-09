@@ -1,0 +1,23 @@
+{
+  "cells": 8275,
+  "reference": {
+    "night": 0.2516,
+    "rain": 0.0716,
+    "vis": 9.0201,
+    "n_acc_median": 6.0,
+    "n_recent_median": 2.0,
+    "sev_median": 2.0,
+    "nb_acc_q": 107.0,
+    "nb_acc_median": 49.0
+  },
+  "factors_listed_before": 24824,
+  "factors_with_supporting_data_before": 11909,
+  "share_supported_before": 0.4797,
+  "factors_listed_after": 13169,
+  "share_supported_after": 1.0,
+  "cells_with_evidence_backed_action": 6101,
+  "cells_with_audit_fallback_only": 33,
+  "cells_with_no_action": 2141,
+  "model_consistent_with_stored_factors": 1.0,
+  "audit_flagged_cells": 542
+}

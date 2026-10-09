@@ -1,0 +1,798 @@
+{
+  "generated_at": "2026-10-08T09:28:02.280976+00:00",
+  "source_file": "US_Accidents_March23.csv",
+  "dataset_credit": "US Accidents (2016-2023), Moosavi et al.",
+  "overall_status": "WARN",
+  "counts": {
+    "PASS": 30,
+    "WARN": 7,
+    "FAIL": 0
+  },
+  "checks": [
+    {
+      "check_name": "Row count",
+      "status": "PASS",
+      "detail": "7,728,394 rows loaded.",
+      "data": {
+        "rows": 7728394
+      }
+    },
+    {
+      "check_name": "Date range",
+      "status": "PASS",
+      "detail": "Crashes span 2016-01-14 to 2023-03-31. Expected coverage 2016-2023.",
+      "data": {
+        "min": "2016-01-14T20:18:33",
+        "max": "2023-03-31T23:30:00",
+        "unparseable": 0
+      }
+    },
+    {
+      "check_name": "Columns present",
+      "status": "PASS",
+      "detail": "All 24 required and key columns present (46 columns in file).",
+      "data": {
+        "n_columns": 46
+      }
+    },
+    {
+      "check_name": "Nulls: ID",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "id",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Start_Lat",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "location",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Start_Lng",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "location",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Start_Time",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "time",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Weather_Condition",
+      "status": "WARN",
+      "detail": "Houston: 1.39% missing (2,348 of 169,428 rows); all US rows: 2.24%. Thresholds: WARN > 1.00%, FAIL > 10.00%. Fallback: the pipeline treats missing weather as 'not rain'.",
+      "data": {
+        "group": "weather",
+        "houston_null_share": 0.01385839412611847,
+        "us_null_share": 0.02244437848277404
+      }
+    },
+    {
+      "check_name": "Nulls: Precipitation(in)",
+      "status": "WARN",
+      "detail": "Houston: 42.94% missing (72,746 of 169,428 rows); all US rows: 28.51%. Thresholds: WARN > 1.00%, FAIL > 10.00%. Fallback: the pipeline also detects rain from Weather_Condition text and treats missing precipitation as 0.",
+      "data": {
+        "group": "weather",
+        "houston_null_share": 0.4293623249994098,
+        "us_null_share": 0.2851285791071211
+      }
+    },
+    {
+      "check_name": "Nulls: Temperature(F)",
+      "status": "WARN",
+      "detail": "Houston: 1.35% missing (2,293 of 169,428 rows); all US rows: 2.12%. Thresholds: WARN > 1.00%, FAIL > 10.00%. Fallback: loaded but not used as a model feature.",
+      "data": {
+        "group": "weather",
+        "houston_null_share": 0.013533772457917228,
+        "us_null_share": 0.021201429430228326
+      }
+    },
+    {
+      "check_name": "Nulls: Visibility(mi)",
+      "status": "WARN",
+      "detail": "Houston: 1.31% missing (2,226 of 169,428 rows); all US rows: 2.29%. Thresholds: WARN > 1.00%, FAIL > 10.00%. Fallback: missing visibility is skipped in cell averages, and cells with none default to 10 miles.",
+      "data": {
+        "group": "visibility",
+        "houston_null_share": 0.013138324243926624,
+        "us_null_share": 0.022915239569825243
+      }
+    },
+    {
+      "check_name": "Nulls: Sunrise_Sunset",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.30%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "day_night",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0030078694228063423
+      }
+    },
+    {
+      "check_name": "Nulls: Amenity",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Bump",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Crossing",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Give_Way",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Junction",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: No_Exit",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Railway",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Roundabout",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Station",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Stop",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Traffic_Calming",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Nulls: Traffic_Signal",
+      "status": "PASS",
+      "detail": "Houston: 0.00% missing (0 of 169,428 rows); all US rows: 0.00%. Thresholds: WARN > 1.00%, FAIL > 10.00%.",
+      "data": {
+        "group": "road_flags",
+        "houston_null_share": 0.0,
+        "us_null_share": 0.0
+      }
+    },
+    {
+      "check_name": "Duplicate IDs",
+      "status": "PASS",
+      "detail": "No duplicate crash IDs.",
+      "data": {
+        "duplicates": 0
+      }
+    },
+    {
+      "check_name": "Coordinates in range",
+      "status": "PASS",
+      "detail": "All coordinates valid and inside the contiguous US box.",
+      "data": {
+        "out_of_range": 0,
+        "at_zero": 0,
+        "missing": 0,
+        "outside_us": 0
+      }
+    },
+    {
+      "check_name": "Houston share",
+      "status": "PASS",
+      "detail": "169,428 of 7,728,394 rows (2.19%) are in Houston, TX. ",
+      "data": {
+        "houston_rows": 169428,
+        "total_rows": 7728394,
+        "share": 0.0219227953440262
+      }
+    },
+    {
+      "check_name": "Crashes per year (Houston)",
+      "status": "PASS",
+      "detail": "2016: 15,566; 2017: 30,297; 2018: 25,241; 2019: 22,172; 2020: 20,033; 2021: 28,041; 2022: 25,817; 2023: 2,261.",
+      "data": {
+        "yearly": {
+          "2016": 15566,
+          "2017": 30297,
+          "2018": 25241,
+          "2019": 22172,
+          "2020": 20033,
+          "2021": 28041,
+          "2022": 25817,
+          "2023": 2261
+        }
+      }
+    },
+    {
+      "check_name": "Year-over-year jump",
+      "status": "WARN",
+      "detail": "Crash counts jump sharply in 2017 (1.9x vs 2016). Such jumps usually reflect changes in data sources or collection coverage rather than real-world change, so trends across the jump should not be read as safety trends. The label years (2021, 2022) are well after it, but history features count crashes from 2016 onward, so a cell's past-crash count mixes both coverage levels.",
+      "data": {
+        "jumps": [
+          {
+            "year": 2017,
+            "ratio": 1.94635744571502
+          }
+        ]
+      }
+    },
+    {
+      "check_name": "2017 jump",
+      "status": "WARN",
+      "detail": "2017 has 30,297 Houston crashes versus 15,566 in 2016 (1.9x). Treat pre-2017 data as not comparable.",
+      "data": {
+        "ratio": 1.94635744571502
+      }
+    },
+    {
+      "check_name": "2023 partial year",
+      "status": "WARN",
+      "detail": "Data for 2023 ends on 2023-03-31 (about 3 of 12 months). 2023 is incomplete and is excluded from yearly comparisons and from model training and testing.",
+      "data": {
+        "last_year": 2023,
+        "last_date": "2023-03-31T23:30:00"
+      }
+    },
+    {
+      "check_name": "Severity distribution",
+      "status": "PASS",
+      "detail": "S1: 0.37%, S2: 81.63%, S3: 17.35%, S4: 0.65%.",
+      "data": {
+        "distribution": {
+          "1": 0.003712491441792384,
+          "2": 0.8162818424345445,
+          "3": 0.17350142833534007,
+          "4": 0.0065042377883230635
+        },
+        "invalid": 0
+      }
+    },
+    {
+      "check_name": "Share of night crashes",
+      "status": "PASS",
+      "detail": "25.95% of Houston crashes with a known day/night label occurred at night (169,428 labelled rows).",
+      "data": {
+        "night_share": 0.2594730504993272
+      }
+    },
+    {
+      "check_name": "Share of rain crashes",
+      "status": "PASS",
+      "detail": "5.53% of Houston crashes with a recorded weather condition were in rain, drizzle, showers or thunderstorms (167,080 labelled rows).",
+      "data": {
+        "rain_share": 0.05528489346420876
+      }
+    },
+    {
+      "check_name": "Time-split definition",
+      "status": "PASS",
+      "detail": "Train: features through 2020, label measured in 2021. Test: features through 2021, label measured in 2022. Splits are strictly forward in time.",
+      "data": {
+        "splits": {
+          "primary": {
+            "name": "train 2020-21",
+            "feature_through": 2020,
+            "label_year": 2021,
+            "role": "train"
+          },
+          "primary_test": {
+            "name": "test 2021-22",
+            "feature_through": 2021,
+            "label_year": 2022,
+            "role": "test"
+          }
+        }
+      }
+    },
+    {
+      "check_name": "Leakage assert (windows)",
+      "status": "PASS",
+      "detail": "Feature windows end before label windows for both splits, and no feature row is dated after its cut-off year."
+    },
+    {
+      "check_name": "Leakage assert (features)",
+      "status": "PASS",
+      "detail": "Features were built twice per split, once with all data and once with data cut at the feature cut-off year. All features were identical, so none uses later data."
+    }
+  ],
+  "yearly_counts": [
+    {
+      "year": 2016,
+      "month": 6,
+      "crashes": 647
+    },
+    {
+      "year": 2016,
+      "month": 7,
+      "crashes": 1912
+    },
+    {
+      "year": 2016,
+      "month": 8,
+      "crashes": 2058
+    },
+    {
+      "year": 2016,
+      "month": 9,
+      "crashes": 2010
+    },
+    {
+      "year": 2016,
+      "month": 10,
+      "crashes": 2073
+    },
+    {
+      "year": 2016,
+      "month": 11,
+      "crashes": 3835
+    },
+    {
+      "year": 2016,
+      "month": 12,
+      "crashes": 3031
+    },
+    {
+      "year": 2017,
+      "month": 1,
+      "crashes": 3596
+    },
+    {
+      "year": 2017,
+      "month": 2,
+      "crashes": 2619
+    },
+    {
+      "year": 2017,
+      "month": 3,
+      "crashes": 2964
+    },
+    {
+      "year": 2017,
+      "month": 4,
+      "crashes": 2663
+    },
+    {
+      "year": 2017,
+      "month": 5,
+      "crashes": 2096
+    },
+    {
+      "year": 2017,
+      "month": 6,
+      "crashes": 2213
+    },
+    {
+      "year": 2017,
+      "month": 7,
+      "crashes": 1804
+    },
+    {
+      "year": 2017,
+      "month": 8,
+      "crashes": 2374
+    },
+    {
+      "year": 2017,
+      "month": 9,
+      "crashes": 2243
+    },
+    {
+      "year": 2017,
+      "month": 10,
+      "crashes": 2909
+    },
+    {
+      "year": 2017,
+      "month": 11,
+      "crashes": 2557
+    },
+    {
+      "year": 2017,
+      "month": 12,
+      "crashes": 2259
+    },
+    {
+      "year": 2018,
+      "month": 1,
+      "crashes": 2171
+    },
+    {
+      "year": 2018,
+      "month": 2,
+      "crashes": 2460
+    },
+    {
+      "year": 2018,
+      "month": 3,
+      "crashes": 2497
+    },
+    {
+      "year": 2018,
+      "month": 4,
+      "crashes": 2293
+    },
+    {
+      "year": 2018,
+      "month": 5,
+      "crashes": 2313
+    },
+    {
+      "year": 2018,
+      "month": 6,
+      "crashes": 2050
+    },
+    {
+      "year": 2018,
+      "month": 7,
+      "crashes": 1771
+    },
+    {
+      "year": 2018,
+      "month": 8,
+      "crashes": 2228
+    },
+    {
+      "year": 2018,
+      "month": 9,
+      "crashes": 1630
+    },
+    {
+      "year": 2018,
+      "month": 10,
+      "crashes": 1912
+    },
+    {
+      "year": 2018,
+      "month": 11,
+      "crashes": 2022
+    },
+    {
+      "year": 2018,
+      "month": 12,
+      "crashes": 1894
+    },
+    {
+      "year": 2019,
+      "month": 1,
+      "crashes": 2097
+    },
+    {
+      "year": 2019,
+      "month": 2,
+      "crashes": 1875
+    },
+    {
+      "year": 2019,
+      "month": 3,
+      "crashes": 1372
+    },
+    {
+      "year": 2019,
+      "month": 4,
+      "crashes": 1970
+    },
+    {
+      "year": 2019,
+      "month": 5,
+      "crashes": 1896
+    },
+    {
+      "year": 2019,
+      "month": 6,
+      "crashes": 1377
+    },
+    {
+      "year": 2019,
+      "month": 7,
+      "crashes": 1680
+    },
+    {
+      "year": 2019,
+      "month": 8,
+      "crashes": 2193
+    },
+    {
+      "year": 2019,
+      "month": 9,
+      "crashes": 2064
+    },
+    {
+      "year": 2019,
+      "month": 10,
+      "crashes": 2315
+    },
+    {
+      "year": 2019,
+      "month": 11,
+      "crashes": 1675
+    },
+    {
+      "year": 2019,
+      "month": 12,
+      "crashes": 1658
+    },
+    {
+      "year": 2020,
+      "month": 1,
+      "crashes": 1705
+    },
+    {
+      "year": 2020,
+      "month": 2,
+      "crashes": 1583
+    },
+    {
+      "year": 2020,
+      "month": 3,
+      "crashes": 1211
+    },
+    {
+      "year": 2020,
+      "month": 4,
+      "crashes": 974
+    },
+    {
+      "year": 2020,
+      "month": 5,
+      "crashes": 1141
+    },
+    {
+      "year": 2020,
+      "month": 6,
+      "crashes": 1318
+    },
+    {
+      "year": 2020,
+      "month": 7,
+      "crashes": 954
+    },
+    {
+      "year": 2020,
+      "month": 8,
+      "crashes": 981
+    },
+    {
+      "year": 2020,
+      "month": 9,
+      "crashes": 1741
+    },
+    {
+      "year": 2020,
+      "month": 10,
+      "crashes": 2329
+    },
+    {
+      "year": 2020,
+      "month": 11,
+      "crashes": 2999
+    },
+    {
+      "year": 2020,
+      "month": 12,
+      "crashes": 3097
+    },
+    {
+      "year": 2021,
+      "month": 1,
+      "crashes": 2743
+    },
+    {
+      "year": 2021,
+      "month": 2,
+      "crashes": 2374
+    },
+    {
+      "year": 2021,
+      "month": 3,
+      "crashes": 1694
+    },
+    {
+      "year": 2021,
+      "month": 4,
+      "crashes": 1876
+    },
+    {
+      "year": 2021,
+      "month": 5,
+      "crashes": 2182
+    },
+    {
+      "year": 2021,
+      "month": 6,
+      "crashes": 2522
+    },
+    {
+      "year": 2021,
+      "month": 7,
+      "crashes": 1838
+    },
+    {
+      "year": 2021,
+      "month": 8,
+      "crashes": 2282
+    },
+    {
+      "year": 2021,
+      "month": 9,
+      "crashes": 2562
+    },
+    {
+      "year": 2021,
+      "month": 10,
+      "crashes": 2326
+    },
+    {
+      "year": 2021,
+      "month": 11,
+      "crashes": 2686
+    },
+    {
+      "year": 2021,
+      "month": 12,
+      "crashes": 2956
+    },
+    {
+      "year": 2022,
+      "month": 1,
+      "crashes": 2323
+    },
+    {
+      "year": 2022,
+      "month": 2,
+      "crashes": 2953
+    },
+    {
+      "year": 2022,
+      "month": 3,
+      "crashes": 2673
+    },
+    {
+      "year": 2022,
+      "month": 4,
+      "crashes": 3320
+    },
+    {
+      "year": 2022,
+      "month": 5,
+      "crashes": 2463
+    },
+    {
+      "year": 2022,
+      "month": 6,
+      "crashes": 1473
+    },
+    {
+      "year": 2022,
+      "month": 7,
+      "crashes": 1857
+    },
+    {
+      "year": 2022,
+      "month": 8,
+      "crashes": 1949
+    },
+    {
+      "year": 2022,
+      "month": 9,
+      "crashes": 1916
+    },
+    {
+      "year": 2022,
+      "month": 10,
+      "crashes": 1033
+    },
+    {
+      "year": 2022,
+      "month": 11,
+      "crashes": 1458
+    },
+    {
+      "year": 2022,
+      "month": 12,
+      "crashes": 2399
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "crashes": 2256
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "crashes": 4
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "crashes": 1
+    }
+  ]
+}

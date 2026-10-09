@@ -1,0 +1,4755 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "WAYMARK API",
+    "description": "Explainable road risk, cell by cell, plus the action loop: region reports, an assistant, tracked measures with photo evidence and a verified-only adjusted risk estimate. Decision support only; human experts decide.",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/summary": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Summary",
+        "operationId": "summary_api_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cells": {
+      "get": {
+        "tags": [
+          "cells"
+        ],
+        "summary": "List Cells",
+        "operationId": "list_cells_api_cells_get",
+        "parameters": [
+          {
+            "name": "min_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Score"
+            }
+          },
+          {
+            "name": "max_past_crashes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Past Crashes"
+            }
+          },
+          {
+            "name": "confidence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "High, Medium, Low (comma-separated allowed)",
+              "title": "Confidence"
+            },
+            "description": "High, Medium, Low (comma-separated allowed)"
+          },
+          {
+            "name": "emerging_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Emerging Only"
+            }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "south,west,north,east",
+              "title": "Bbox"
+            },
+            "description": "south,west,north,east"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20000,
+              "minimum": 1,
+              "default": 10000,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CellList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cells/{cell_id}": {
+      "get": {
+        "tags": [
+          "cells"
+        ],
+        "summary": "Cell Detail",
+        "operationId": "cell_detail_api_cells__cell_id__get",
+        "parameters": [
+          {
+            "name": "cell_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cell Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CellDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/crashes": {
+      "get": {
+        "tags": [
+          "crashes"
+        ],
+        "summary": "List Crashes",
+        "description": "Real crash locations (points) for the map. Needs a bbox or a cell_id so the whole table is never sent.",
+        "operationId": "list_crashes_api_crashes_get",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "south,west,north,east",
+              "title": "Bbox"
+            },
+            "description": "south,west,north,east"
+          },
+          {
+            "name": "cell_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only crashes inside this H3 cell",
+              "title": "Cell Id"
+            },
+            "description": "only crashes inside this H3 cell"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 3000,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrashList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/places": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Search Places",
+        "description": "Find scored cells containing crashes whose dataset locality matches the query.",
+        "operationId": "search_places_api_places_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/whatif": {
+      "get": {
+        "tags": [
+          "what-if"
+        ],
+        "summary": "Whatif",
+        "description": "Baseline vs scenario probability for every cell. A factor that is off keeps the recorded values.",
+        "operationId": "whatif_api_whatif_get",
+        "parameters": [
+          {
+            "name": "night",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Night"
+            }
+          },
+          {
+            "name": "rain",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Rain"
+            }
+          },
+          {
+            "name": "low_vis",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Low Vis"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatIfResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/validation": {
+      "get": {
+        "tags": [
+          "evidence"
+        ],
+        "summary": "Validation",
+        "operationId": "validation_api_validation_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics": {
+      "get": {
+        "tags": [
+          "evidence"
+        ],
+        "summary": "Metrics",
+        "operationId": "metrics_api_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit-list": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "Audit List",
+        "operationId": "audit_list_api_audit_list_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "search cell id, factors or actions",
+              "title": "Q"
+            },
+            "description": "search cell id, factors or actions"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(risk_vs_similar_history|risk_score|n_past_crashes|cell_id|confidence)$",
+              "default": "risk_vs_similar_history",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(asc|desc)$",
+              "default": "desc",
+              "title": "Order"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(json|csv)$",
+              "default": "json",
+              "title": "Format"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/demo": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Demo",
+        "description": "Demo-mode sign-in: a token for the chosen role. Switched off with WAYMARK_DEMO_MODE=0.",
+        "operationId": "demo_api_auth_demo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/regions/resolve": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Resolve",
+        "description": "Pure read: the name, cell count and bounds of a region. Public, like the other map reads.",
+        "operationId": "resolve_api_regions_resolve_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32,
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "title": "Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Region"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Create Report",
+        "operationId": "create_report_api_reports_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "List Reports",
+        "operationId": "list_reports_api_reports_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32,
+              "title": "Region Kind"
+            }
+          },
+          {
+            "name": "region_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 300,
+              "title": "Region Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportSummary"
+                  },
+                  "title": "Response List Reports Api Reports Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/{report_id}": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Get Report",
+        "operationId": "get_report_api_reports__report_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/{report_id}/pdf": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Download Pdf",
+        "operationId": "download_pdf_api_reports__report_id__pdf_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/{report_id}/json": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Download Json",
+        "operationId": "download_json_api_reports__report_id__json_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/effects": {
+      "get": {
+        "tags": [
+          "measures"
+        ],
+        "summary": "Effects",
+        "description": "Categories, placeholder weights and the credit cap (read-only view of backend/config/effects.json).",
+        "operationId": "effects_api_effects_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectsOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/regions/{kind}/{key}/progress": {
+      "get": {
+        "tags": [
+          "measures"
+        ],
+        "summary": "Progress",
+        "operationId": "progress_api_regions__kind___key__progress_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Progress"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/measures": {
+      "post": {
+        "tags": [
+          "measures"
+        ],
+        "summary": "Create Measure",
+        "operationId": "create_measure_api_measures_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasureCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Measure"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/measures/{measure_id}": {
+      "get": {
+        "tags": [
+          "measures"
+        ],
+        "summary": "Read Measure",
+        "operationId": "read_measure_api_measures__measure_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "measure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Measure Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasureDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "measures"
+        ],
+        "summary": "Patch Measure",
+        "operationId": "patch_measure_api_measures__measure_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "measure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Measure Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasurePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasureDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "measures"
+        ],
+        "summary": "Cancel Measure",
+        "description": "Soft delete: the measure is marked cancelled and drops out of both percentages and the adjusted index.",
+        "operationId": "cancel_measure_api_measures__measure_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "measure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Measure Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasureDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/measures/{measure_id}/comments": {
+      "post": {
+        "tags": [
+          "measures"
+        ],
+        "summary": "Comment",
+        "operationId": "comment_api_measures__measure_id__comments_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "measure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Measure Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasureEvent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/measures/{measure_id}/verify": {
+      "post": {
+        "tags": [
+          "measures"
+        ],
+        "summary": "Verify",
+        "operationId": "verify_api_measures__measure_id__verify_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "measure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Measure Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasureDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/measures/{measure_id}/evidence": {
+      "post": {
+        "tags": [
+          "evidence"
+        ],
+        "summary": "Upload Evidence",
+        "operationId": "upload_evidence_api_measures__measure_id__evidence_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "measure_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Measure Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_evidence_api_measures__measure_id__evidence_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Evidence"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/evidence/{evidence_id}/file": {
+      "get": {
+        "tags": [
+          "evidence"
+        ],
+        "summary": "Evidence File",
+        "operationId": "evidence_file_api_evidence__evidence_id__file_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "evidence_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Evidence Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/evidence/{evidence_id}/thumb": {
+      "get": {
+        "tags": [
+          "evidence"
+        ],
+        "summary": "Evidence Thumb",
+        "operationId": "evidence_thumb_api_evidence__evidence_id__thumb_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "evidence_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Evidence Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/sessions": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Create Session",
+        "operationId": "create_session_api_chat_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatSessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/chat/sessions/{session_id}/report": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Attach Report",
+        "operationId": "attach_report_api_chat_sessions__session_id__report_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_attach_report_api_chat_sessions__session_id__report_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportChip"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/sessions/{session_id}/report/latest": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Use Latest Report",
+        "description": "Swap the attached report for the newest ready report of the same region (\"use latest report\").",
+        "operationId": "use_latest_report_api_chat_sessions__session_id__report_latest_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportChip"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/sessions/{session_id}/messages": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "History",
+        "operationId": "history_api_chat_sessions__session_id__messages_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatHistory"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Send Message",
+        "operationId": "send_message_api_chat_sessions__session_id__messages_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "stream",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "false returns one JSON body",
+              "default": true,
+              "title": "Stream"
+            },
+            "description": "false returns one JSON body"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuditItem": {
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "title": "Cell Id"
+          },
+          "region": {
+            "type": "string",
+            "title": "Region"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "n_past_crashes": {
+            "type": "integer",
+            "title": "N Past Crashes"
+          },
+          "risk_vs_similar_history": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Vs Similar History"
+          },
+          "risk_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Score"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "top_factors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Factors"
+          },
+          "suggested_actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Suggested Actions"
+          },
+          "google_maps_url": {
+            "type": "string",
+            "title": "Google Maps Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cell_id",
+          "region",
+          "lat",
+          "lng",
+          "n_past_crashes",
+          "risk_vs_similar_history",
+          "risk_score",
+          "confidence",
+          "top_factors",
+          "suggested_actions",
+          "google_maps_url"
+        ],
+        "title": "AuditItem"
+      },
+      "AuditResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "count",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "AuditResponse"
+      },
+      "Body_attach_report_api_chat_sessions__session_id__report_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_attach_report_api_chat_sessions__session_id__report_post"
+      },
+      "Body_upload_evidence_api_measures__measure_id__evidence_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EvidenceKind"
+          },
+          "caption": {
+            "type": "string",
+            "title": "Caption",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "kind"
+        ],
+        "title": "Body_upload_evidence_api_measures__measure_id__evidence_post"
+      },
+      "Bounds": {
+        "properties": {
+          "south": {
+            "type": "number",
+            "title": "South"
+          },
+          "west": {
+            "type": "number",
+            "title": "West"
+          },
+          "north": {
+            "type": "number",
+            "title": "North"
+          },
+          "east": {
+            "type": "number",
+            "title": "East"
+          }
+        },
+        "type": "object",
+        "required": [
+          "south",
+          "west",
+          "north",
+          "east"
+        ],
+        "title": "Bounds"
+      },
+      "CategoryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "default_owner": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "evidence_required": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Required"
+          },
+          "placeholder": {
+            "type": "boolean",
+            "title": "Placeholder"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "weight",
+          "default_owner",
+          "evidence_required",
+          "placeholder"
+        ],
+        "title": "CategoryOut"
+      },
+      "CellDetail": {
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "title": "Cell Id"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "n_past_crashes": {
+            "type": "integer",
+            "title": "N Past Crashes"
+          },
+          "risk_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Score"
+          },
+          "risk_vs_similar_history": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Vs Similar History"
+          },
+          "history_percentile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Percentile"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "confidence_explanation": {
+            "type": "string",
+            "title": "Confidence Explanation"
+          },
+          "emerging_risk": {
+            "type": "boolean",
+            "title": "Emerging Risk"
+          },
+          "top_overall": {
+            "type": "boolean",
+            "title": "Top Overall"
+          },
+          "recommend_audit": {
+            "type": "boolean",
+            "title": "Recommend Audit"
+          },
+          "audit_banner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Banner"
+          },
+          "baseline_prob": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Prob"
+          },
+          "top_factors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Factors"
+          },
+          "suggested_actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Suggested Actions"
+          },
+          "shap": {
+            "items": {
+              "$ref": "#/components/schemas/ShapItem"
+            },
+            "type": "array",
+            "title": "Shap"
+          },
+          "shap_available": {
+            "type": "boolean",
+            "title": "Shap Available"
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioItem"
+            },
+            "type": "array",
+            "title": "Scenarios"
+          },
+          "google_maps_url": {
+            "type": "string",
+            "title": "Google Maps Url"
+          },
+          "adjusted_risk_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusted Risk Score"
+          },
+          "has_measures": {
+            "type": "boolean",
+            "title": "Has Measures",
+            "default": false
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/CellMeasureBrief"
+            },
+            "type": "array",
+            "title": "Measures",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "cell_id",
+          "lat",
+          "lng",
+          "n_past_crashes",
+          "risk_score",
+          "risk_vs_similar_history",
+          "history_percentile",
+          "headline",
+          "confidence",
+          "confidence_explanation",
+          "emerging_risk",
+          "top_overall",
+          "recommend_audit",
+          "audit_banner",
+          "baseline_prob",
+          "top_factors",
+          "suggested_actions",
+          "shap",
+          "shap_available",
+          "scenarios",
+          "google_maps_url"
+        ],
+        "title": "CellDetail"
+      },
+      "CellList": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CellLite"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "count",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "CellList"
+      },
+      "CellLite": {
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "title": "Cell Id"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "n_past_crashes": {
+            "type": "integer",
+            "title": "N Past Crashes"
+          },
+          "risk_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Score"
+          },
+          "risk_vs_similar_history": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Vs Similar History"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "emerging_risk": {
+            "type": "boolean",
+            "title": "Emerging Risk"
+          },
+          "top_overall": {
+            "type": "boolean",
+            "title": "Top Overall"
+          },
+          "adjusted_risk_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusted Risk Score"
+          },
+          "has_measures": {
+            "type": "boolean",
+            "title": "Has Measures",
+            "default": false
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/CellMeasureBrief"
+            },
+            "type": "array",
+            "title": "Measures",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "cell_id",
+          "lat",
+          "lng",
+          "n_past_crashes",
+          "risk_score",
+          "risk_vs_similar_history",
+          "confidence",
+          "emerging_risk",
+          "top_overall"
+        ],
+        "title": "CellLite"
+      },
+      "CellMeasureBrief": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "region_kind": {
+            "type": "string",
+            "title": "Region Kind"
+          },
+          "region_key": {
+            "type": "string",
+            "title": "Region Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status",
+          "category",
+          "region_kind",
+          "region_key"
+        ],
+        "title": "CellMeasureBrief",
+        "description": "Compact measure shown on map cells (additive field on /api/cells)."
+      },
+      "ChatHistory": {
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/ChatSessionOut"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "type": "array",
+            "title": "Messages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session",
+          "messages"
+        ],
+        "title": "ChatHistory"
+      },
+      "ChatMessage": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "author": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Author"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationCard"
+            },
+            "type": "array",
+            "title": "Cards",
+            "default": []
+          },
+          "fallback_mode": {
+            "type": "boolean",
+            "title": "Fallback Mode",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "author",
+          "content",
+          "created_at"
+        ],
+        "title": "ChatMessage"
+      },
+      "ChatSessionCreate": {
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "ChatSessionCreate"
+      },
+      "ChatSessionOut": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportChip"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "role",
+          "created_at"
+        ],
+        "title": "ChatSessionOut"
+      },
+      "CommentCreate": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "CommentCreate"
+      },
+      "CrashList": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CrashPoint"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "available",
+          "total",
+          "count",
+          "truncated",
+          "items"
+        ],
+        "title": "CrashList"
+      },
+      "CrashPoint": {
+        "properties": {
+          "crash_id": {
+            "type": "string",
+            "title": "Crash Id"
+          },
+          "cell_id": {
+            "type": "string",
+            "title": "Cell Id"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "weather": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weather"
+          },
+          "night": {
+            "type": "boolean",
+            "title": "Night"
+          }
+        },
+        "type": "object",
+        "required": [
+          "crash_id",
+          "cell_id",
+          "lat",
+          "lng",
+          "start_time",
+          "severity",
+          "weather",
+          "night"
+        ],
+        "title": "CrashPoint"
+      },
+      "DemoIn": {
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "DemoIn"
+      },
+      "EffectsOut": {
+        "properties": {
+          "placeholder_weights": {
+            "type": "boolean",
+            "title": "Placeholder Weights"
+          },
+          "credit_cap": {
+            "type": "number",
+            "title": "Credit Cap"
+          },
+          "stage_factors": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Stage Factors"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryOut"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": "These are estimates from historical crash records, not predictions. The adjusted index is an overlay estimate, not a re-run of the risk model."
+          }
+        },
+        "type": "object",
+        "required": [
+          "placeholder_weights",
+          "credit_cap",
+          "stage_factors",
+          "categories"
+        ],
+        "title": "EffectsOut"
+      },
+      "Evidence": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "measure_id": {
+            "type": "integer",
+            "title": "Measure Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EvidenceKind"
+          },
+          "file_url": {
+            "type": "string",
+            "title": "File Url"
+          },
+          "thumb_url": {
+            "type": "string",
+            "title": "Thumb Url"
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption"
+          },
+          "geo_flag": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "far",
+              "missing"
+            ],
+            "title": "Geo Flag"
+          },
+          "stale_photo": {
+            "type": "boolean",
+            "title": "Stale Photo"
+          },
+          "exif_taken_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exif Taken At"
+          },
+          "uploaded_by": {
+            "type": "string",
+            "title": "Uploaded By"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "measure_id",
+          "kind",
+          "file_url",
+          "thumb_url",
+          "caption",
+          "geo_flag",
+          "stale_photo",
+          "exif_taken_at",
+          "uploaded_by",
+          "created_at"
+        ],
+        "title": "Evidence"
+      },
+      "EvidenceKind": {
+        "type": "string",
+        "enum": [
+          "before",
+          "during",
+          "after"
+        ],
+        "title": "EvidenceKind"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Headline": {
+        "properties": {
+          "low_history_capture_top10_model": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low History Capture Top10 Model"
+          },
+          "low_history_capture_top10_history": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low History Capture Top10 History"
+          },
+          "low_history_blackspots": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low History Blackspots"
+          },
+          "overall_auc_model": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Auc Model"
+          },
+          "overall_auc_history": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Auc History"
+          },
+          "scoring_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Basis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "low_history_capture_top10_model",
+          "low_history_capture_top10_history",
+          "low_history_blackspots",
+          "overall_auc_model",
+          "overall_auc_history",
+          "scoring_basis"
+        ],
+        "title": "Headline"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "database": {
+            "type": "boolean",
+            "title": "Database"
+          },
+          "cells": {
+            "type": "integer",
+            "title": "Cells",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database"
+        ],
+        "title": "Health"
+      },
+      "HotspotCell": {
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "title": "Cell Id"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "base_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Score"
+          },
+          "n_past_crashes": {
+            "type": "integer",
+            "title": "N Past Crashes"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "emerging_risk": {
+            "type": "boolean",
+            "title": "Emerging Risk"
+          },
+          "risk_vs_similar_history": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Vs Similar History"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "locality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locality"
+          },
+          "google_maps_url": {
+            "type": "string",
+            "title": "Google Maps Url",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "cell_id",
+          "rank",
+          "base_score",
+          "n_past_crashes",
+          "confidence",
+          "emerging_risk",
+          "risk_vs_similar_history",
+          "lat",
+          "lng"
+        ],
+        "title": "HotspotCell"
+      },
+      "HourCount": {
+        "properties": {
+          "hour": {
+            "type": "integer",
+            "title": "Hour"
+          },
+          "crashes": {
+            "type": "integer",
+            "title": "Crashes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hour",
+          "crashes"
+        ],
+        "title": "HourCount"
+      },
+      "LoginIn": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginIn"
+      },
+      "Measure": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "region_kind": {
+            "type": "string",
+            "title": "Region Kind"
+          },
+          "region_key": {
+            "type": "string",
+            "title": "Region Key"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "category_label": {
+            "type": "string",
+            "title": "Category Label"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "owner_role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MeasureStatus"
+          },
+          "effect_weight": {
+            "type": "number",
+            "title": "Effect Weight"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "cell_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cell Ids"
+          },
+          "evidence_count": {
+            "type": "integer",
+            "title": "Evidence Count",
+            "default": 0
+          },
+          "evidence_required": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Required",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "report_id",
+          "region_kind",
+          "region_key",
+          "title",
+          "category",
+          "category_label",
+          "description",
+          "owner_role",
+          "status",
+          "effect_weight",
+          "source",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "cell_ids"
+        ],
+        "title": "Measure"
+      },
+      "MeasureCreate": {
+        "properties": {
+          "region_kind": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Region Kind"
+          },
+          "region_key": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Region Key"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 3,
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Category"
+          },
+          "cell_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Cell Ids"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "owner_role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "chat",
+              "manual"
+            ],
+            "title": "Source",
+            "default": "manual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region_kind",
+          "region_key",
+          "title",
+          "category",
+          "cell_ids"
+        ],
+        "title": "MeasureCreate"
+      },
+      "MeasureDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "region_kind": {
+            "type": "string",
+            "title": "Region Kind"
+          },
+          "region_key": {
+            "type": "string",
+            "title": "Region Key"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "category_label": {
+            "type": "string",
+            "title": "Category Label"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "owner_role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MeasureStatus"
+          },
+          "effect_weight": {
+            "type": "number",
+            "title": "Effect Weight"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "cell_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cell Ids"
+          },
+          "evidence_count": {
+            "type": "integer",
+            "title": "Evidence Count",
+            "default": 0
+          },
+          "evidence_required": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Required",
+            "default": []
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/MeasureEvent"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "allowed_next": {
+            "items": {
+              "$ref": "#/components/schemas/MeasureStatus"
+            },
+            "type": "array",
+            "title": "Allowed Next"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "report_id",
+          "region_kind",
+          "region_key",
+          "title",
+          "category",
+          "category_label",
+          "description",
+          "owner_role",
+          "status",
+          "effect_weight",
+          "source",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "cell_ids",
+          "events",
+          "evidence",
+          "allowed_next"
+        ],
+        "title": "MeasureDetail"
+      },
+      "MeasureEvent": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Status"
+          },
+          "to_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Status"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "actor_role": {
+            "type": "string",
+            "title": "Actor Role"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "from_status",
+          "to_status",
+          "actor",
+          "actor_role",
+          "note",
+          "created_at"
+        ],
+        "title": "MeasureEvent"
+      },
+      "MeasurePatch": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "owner_role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasureStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "title": "MeasurePatch"
+      },
+      "MeasureStatus": {
+        "type": "string",
+        "enum": [
+          "planned",
+          "in_progress",
+          "evidence_submitted",
+          "verified",
+          "cancelled"
+        ],
+        "title": "MeasureStatus"
+      },
+      "MessageIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "MessageIn"
+      },
+      "MetricGroup": {
+        "properties": {
+          "group_name": {
+            "type": "string",
+            "title": "Group Name"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MetricPair"
+            },
+            "type": "object",
+            "title": "Metrics"
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "group_name",
+          "metrics"
+        ],
+        "title": "MetricGroup"
+      },
+      "MetricPair": {
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "history": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History"
+          },
+          "history_fair": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Fair"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "history"
+        ],
+        "title": "MetricPair"
+      },
+      "MetricsResponse": {
+        "properties": {
+          "overall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricGroup"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "low_history": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricGroup"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "robustness": {
+            "items": {
+              "$ref": "#/components/schemas/MetricGroup"
+            },
+            "type": "array",
+            "title": "Robustness"
+          },
+          "second_split": {
+            "items": {
+              "$ref": "#/components/schemas/MetricGroup"
+            },
+            "type": "array",
+            "title": "Second Split"
+          },
+          "bootstrap": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bootstrap"
+          },
+          "caveat": {
+            "type": "string",
+            "title": "Caveat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "overall",
+          "low_history",
+          "robustness",
+          "second_split",
+          "bootstrap",
+          "caveat"
+        ],
+        "title": "MetricsResponse"
+      },
+      "MonthCount": {
+        "properties": {
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "month": {
+            "type": "integer",
+            "title": "Month"
+          },
+          "crashes": {
+            "type": "integer",
+            "title": "Crashes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year",
+          "month",
+          "crashes"
+        ],
+        "title": "MonthCount"
+      },
+      "PlaceSearchItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "crash_count": {
+            "type": "integer",
+            "title": "Crash Count"
+          },
+          "cell_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cell Ids"
+          },
+          "south": {
+            "type": "number",
+            "title": "South"
+          },
+          "west": {
+            "type": "number",
+            "title": "West"
+          },
+          "north": {
+            "type": "number",
+            "title": "North"
+          },
+          "east": {
+            "type": "number",
+            "title": "East"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "crash_count",
+          "cell_ids",
+          "south",
+          "west",
+          "north",
+          "east"
+        ],
+        "title": "PlaceSearchItem"
+      },
+      "PlaceSearchResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceSearchItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "items"
+        ],
+        "title": "PlaceSearchResponse"
+      },
+      "PriorityIssue": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "cell_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cell Ids"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "evidence",
+          "cell_ids"
+        ],
+        "title": "PriorityIssue"
+      },
+      "Progress": {
+        "properties": {
+          "region": {
+            "$ref": "#/components/schemas/Region"
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/Measure"
+            },
+            "type": "array",
+            "title": "Measures"
+          },
+          "implementation_pct": {
+            "type": "number",
+            "title": "Implementation Pct"
+          },
+          "verified_pct": {
+            "type": "number",
+            "title": "Verified Pct"
+          },
+          "base_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Index"
+          },
+          "adjusted_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusted Index"
+          },
+          "credit_cap": {
+            "type": "number",
+            "title": "Credit Cap"
+          },
+          "placeholder_weights": {
+            "type": "boolean",
+            "title": "Placeholder Weights"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/RiskSnapshotOut"
+            },
+            "type": "array",
+            "title": "Snapshots"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": "These are estimates from historical crash records, not predictions. The adjusted index is an overlay estimate, not a re-run of the risk model."
+          }
+        },
+        "type": "object",
+        "required": [
+          "region",
+          "measures",
+          "implementation_pct",
+          "verified_pct",
+          "base_index",
+          "adjusted_index",
+          "credit_cap",
+          "placeholder_weights",
+          "snapshots"
+        ],
+        "title": "Progress"
+      },
+      "QualityCheck": {
+        "properties": {
+          "check_name": {
+            "type": "string",
+            "title": "Check Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "check_name",
+          "status",
+          "detail"
+        ],
+        "title": "QualityCheck"
+      },
+      "RecommendationCard": {
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "title": "Card Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "owner_role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "cell_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cell Ids"
+          },
+          "rationale": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Rationale"
+          },
+          "evidence_needed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Needed",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "card_id",
+          "title",
+          "category",
+          "owner_role",
+          "cell_ids",
+          "rationale"
+        ],
+        "title": "RecommendationCard"
+      },
+      "Region": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "cell_count": {
+            "type": "integer",
+            "title": "Cell Count"
+          },
+          "bounds": {
+            "$ref": "#/components/schemas/Bounds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "key",
+          "name",
+          "cell_count",
+          "bounds"
+        ],
+        "title": "Region"
+      },
+      "RegionAnalysis": {
+        "properties": {
+          "region": {
+            "$ref": "#/components/schemas/Region"
+          },
+          "risk_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Index"
+          },
+          "risk_index_method": {
+            "type": "string",
+            "title": "Risk Index Method"
+          },
+          "total_crashes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Crashes"
+          },
+          "emerging_cells": {
+            "type": "integer",
+            "title": "Emerging Cells"
+          },
+          "night_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Night Share"
+          },
+          "severe_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severe Share"
+          },
+          "hotspots": {
+            "items": {
+              "$ref": "#/components/schemas/HotspotCell"
+            },
+            "type": "array",
+            "title": "Hotspots"
+          },
+          "year_trend": {
+            "items": {
+              "$ref": "#/components/schemas/YearCount"
+            },
+            "type": "array",
+            "title": "Year Trend"
+          },
+          "hour_of_day": {
+            "items": {
+              "$ref": "#/components/schemas/HourCount"
+            },
+            "type": "array",
+            "title": "Hour Of Day"
+          },
+          "priority_issues": {
+            "items": {
+              "$ref": "#/components/schemas/PriorityIssue"
+            },
+            "type": "array",
+            "title": "Priority Issues"
+          },
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Caveats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region",
+          "risk_index",
+          "risk_index_method",
+          "total_crashes",
+          "emerging_cells",
+          "night_share",
+          "severe_share",
+          "hotspots",
+          "year_trend",
+          "hour_of_day",
+          "priority_issues",
+          "caveats"
+        ],
+        "title": "RegionAnalysis"
+      },
+      "RegionReport": {
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "title": "Report Id"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version",
+            "default": "1"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "data_version": {
+            "type": "string",
+            "title": "Data Version"
+          },
+          "analysis": {
+            "$ref": "#/components/schemas/RegionAnalysis"
+          },
+          "placeholder_weights": {
+            "type": "boolean",
+            "title": "Placeholder Weights"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "These are estimates from historical crash records, not predictions. The adjusted index is an overlay estimate, not a re-run of the risk model."
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_id",
+          "generated_at",
+          "data_version",
+          "analysis",
+          "placeholder_weights"
+        ],
+        "title": "RegionReport"
+      },
+      "ReportChip": {
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "title": "Report Id"
+          },
+          "region": {
+            "$ref": "#/components/schemas/Region"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale"
+          },
+          "stale_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_id",
+          "region",
+          "generated_at",
+          "stale"
+        ],
+        "title": "ReportChip"
+      },
+      "ReportCreate": {
+        "properties": {
+          "region_kind": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Region Kind"
+          },
+          "region_key": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Region Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region_kind",
+          "region_key"
+        ],
+        "title": "ReportCreate"
+      },
+      "ReportStatus": {
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "title": "Report Id"
+          },
+          "region_kind": {
+            "type": "string",
+            "title": "Region Kind"
+          },
+          "region_key": {
+            "type": "string",
+            "title": "Region Key"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "error_safe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Safe"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RegionReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_id",
+          "region_kind",
+          "region_key",
+          "status",
+          "created_at"
+        ],
+        "title": "ReportStatus"
+      },
+      "ReportSummary": {
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "title": "Report Id"
+          },
+          "region_kind": {
+            "type": "string",
+            "title": "Region Kind"
+          },
+          "region_key": {
+            "type": "string",
+            "title": "Region Key"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_id",
+          "region_kind",
+          "region_key",
+          "status",
+          "created_at"
+        ],
+        "title": "ReportSummary"
+      },
+      "RiskSnapshotOut": {
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "base_index": {
+            "type": "number",
+            "title": "Base Index"
+          },
+          "adjusted_index": {
+            "type": "number",
+            "title": "Adjusted Index"
+          },
+          "implementation_pct": {
+            "type": "number",
+            "title": "Implementation Pct"
+          },
+          "verified_pct": {
+            "type": "number",
+            "title": "Verified Pct"
+          },
+          "cause_measure_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cause Measure Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "created_at",
+          "base_index",
+          "adjusted_index",
+          "implementation_pct",
+          "verified_pct",
+          "cause_measure_id"
+        ],
+        "title": "RiskSnapshotOut"
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "planner",
+          "engineer",
+          "community"
+        ],
+        "title": "Role"
+      },
+      "ScenarioItem": {
+        "properties": {
+          "night": {
+            "type": "boolean",
+            "title": "Night"
+          },
+          "rain": {
+            "type": "boolean",
+            "title": "Rain"
+          },
+          "low_vis": {
+            "type": "boolean",
+            "title": "Low Vis"
+          },
+          "probability": {
+            "type": "number",
+            "title": "Probability"
+          }
+        },
+        "type": "object",
+        "required": [
+          "night",
+          "rain",
+          "low_vis",
+          "probability"
+        ],
+        "title": "ScenarioItem"
+      },
+      "ShapItem": {
+        "properties": {
+          "feature": {
+            "type": "string",
+            "title": "Feature"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "feature_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feature Value"
+          },
+          "shap_value": {
+            "type": "number",
+            "title": "Shap Value"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "feature_value",
+          "shap_value",
+          "direction",
+          "rank"
+        ],
+        "title": "ShapItem"
+      },
+      "Summary": {
+        "properties": {
+          "cells_scored": {
+            "type": "integer",
+            "title": "Cells Scored"
+          },
+          "low_history_cells": {
+            "type": "integer",
+            "title": "Low History Cells"
+          },
+          "emerging_risk_cells": {
+            "type": "integer",
+            "title": "Emerging Risk Cells"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Headline"
+          },
+          "footer": {
+            "type": "string",
+            "title": "Footer",
+            "default": "WAYMARK is decision support only. Human experts decide. Indicative result: one city, one backtest."
+          },
+          "placeholder_weights": {
+            "type": "boolean",
+            "title": "Placeholder Weights",
+            "default": true
+          },
+          "credit_cap": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Cap"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cells_scored",
+          "low_history_cells",
+          "emerging_risk_cells",
+          "headline"
+        ],
+        "title": "Summary"
+      },
+      "TokenOut": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "user"
+        ],
+        "title": "TokenOut"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "role"
+        ],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValidationResponse": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/QualityCheck"
+            },
+            "type": "array",
+            "title": "Checks"
+          },
+          "yearly_totals": {
+            "items": {
+              "$ref": "#/components/schemas/YearTotal"
+            },
+            "type": "array",
+            "title": "Yearly Totals"
+          },
+          "monthly_counts": {
+            "items": {
+              "$ref": "#/components/schemas/MonthCount"
+            },
+            "type": "array",
+            "title": "Monthly Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "counts",
+          "checks",
+          "yearly_totals",
+          "monthly_counts"
+        ],
+        "title": "ValidationResponse"
+      },
+      "VerifyRequest": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "VerifyRequest"
+      },
+      "WhatIfItem": {
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "title": "Cell Id"
+          },
+          "baseline": {
+            "type": "number",
+            "title": "Baseline"
+          },
+          "scenario": {
+            "type": "number",
+            "title": "Scenario"
+          },
+          "change": {
+            "type": "number",
+            "title": "Change"
+          },
+          "emerging_risk": {
+            "type": "boolean",
+            "title": "Emerging Risk"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cell_id",
+          "baseline",
+          "scenario",
+          "change",
+          "emerging_risk"
+        ],
+        "title": "WhatIfItem"
+      },
+      "WhatIfResponse": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "night": {
+            "type": "boolean",
+            "title": "Night"
+          },
+          "rain": {
+            "type": "boolean",
+            "title": "Rain"
+          },
+          "low_vis": {
+            "type": "boolean",
+            "title": "Low Vis"
+          },
+          "n_cells": {
+            "type": "integer",
+            "title": "N Cells"
+          },
+          "n_emerging": {
+            "type": "integer",
+            "title": "N Emerging"
+          },
+          "mean_change_all": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Change All"
+          },
+          "mean_change_emerging": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Change Emerging"
+          },
+          "share_cells_higher": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Cells Higher"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WhatIfItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "night",
+          "rain",
+          "low_vis",
+          "n_cells",
+          "n_emerging",
+          "mean_change_all",
+          "mean_change_emerging",
+          "share_cells_higher",
+          "items"
+        ],
+        "title": "WhatIfResponse"
+      },
+      "YearCount": {
+        "properties": {
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "crashes": {
+            "type": "integer",
+            "title": "Crashes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year",
+          "crashes"
+        ],
+        "title": "YearCount"
+      },
+      "YearTotal": {
+        "properties": {
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "crashes": {
+            "type": "integer",
+            "title": "Crashes"
+          },
+          "months_covered": {
+            "type": "integer",
+            "title": "Months Covered"
+          },
+          "partial": {
+            "type": "boolean",
+            "title": "Partial"
+          },
+          "ratio_vs_previous": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio Vs Previous"
+          },
+          "jump": {
+            "type": "boolean",
+            "title": "Jump"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year",
+          "crashes",
+          "months_covered",
+          "partial",
+          "ratio_vs_previous",
+          "jump"
+        ],
+        "title": "YearTotal"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

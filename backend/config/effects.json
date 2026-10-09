@@ -1,0 +1,70 @@
+{
+  "placeholder": true,
+  "credit_cap": 0.6,
+  "stage_factors": {"planned": 0.0, "in_progress": 0.25, "evidence_submitted": 0.75, "verified": 1.0},
+  "categories": {
+    "street_lighting": {
+      "label": "Street lighting and reflective signage",
+      "weight": 0.10,
+      "default_owner": "engineer",
+      "evidence_required": ["before", "after"],
+      "placeholder": true
+    },
+    "pedestrian_crossing": {
+      "label": "Pedestrian crossing visibility and provision",
+      "weight": 0.10,
+      "default_owner": "engineer",
+      "evidence_required": ["before", "after"],
+      "placeholder": true
+    },
+    "junction_layout": {
+      "label": "Junction layout, sight lines and signage",
+      "weight": 0.12,
+      "default_owner": "engineer",
+      "evidence_required": ["before", "after"],
+      "placeholder": true
+    },
+    "signal_timing": {
+      "label": "Traffic signal timing and placement",
+      "weight": 0.08,
+      "default_owner": "planner",
+      "evidence_required": ["after"],
+      "placeholder": true
+    },
+    "speed_management": {
+      "label": "Speed management and traffic calming",
+      "weight": 0.10,
+      "default_owner": "planner",
+      "evidence_required": ["before", "after"],
+      "placeholder": true
+    },
+    "drainage_surface": {
+      "label": "Drainage and road-surface condition",
+      "weight": 0.08,
+      "default_owner": "engineer",
+      "evidence_required": ["before", "after"],
+      "placeholder": true
+    },
+    "visibility_markings": {
+      "label": "Low-visibility warnings and road markings",
+      "weight": 0.06,
+      "default_owner": "engineer",
+      "evidence_required": ["before", "after"],
+      "placeholder": true
+    },
+    "community_awareness": {
+      "label": "Community awareness and local reporting",
+      "weight": 0.03,
+      "default_owner": "community",
+      "evidence_required": ["after"],
+      "placeholder": true
+    },
+    "site_safety_audit": {
+      "label": "Detailed site safety audit",
+      "weight": 0.0,
+      "default_owner": "planner",
+      "evidence_required": ["after"],
+      "placeholder": true
+    }
+  }
+}

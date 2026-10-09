@@ -1,0 +1,141 @@
+--- blackspot_pipeline.py	2026-10-08 05:01:50.000000000 +0000
++++ /home/claude/p/waymark_v1/blackspot_pipeline.py	2026-10-08 11:31:32.732347106 +0000
+@@ -7,7 +7,7 @@
+ 
+ Outputs (in ./out):
+   cell_scores.csv   one row per H3 cell: risk score, confidence, top factors, advice
+-  model.joblib      trained model + feature list (for the Streamlit app)
++  model.joblib      trained model + feature list (for the web app)
+   metrics.json      validation numbers for your slides
+ 
+ Design (CSV-only MVP):
+@@ -19,6 +19,8 @@
+ import numpy as np, pandas as pd, h3, joblib, shap, lightgbm as lgb
+ from sklearn.metrics import roc_auc_score
+ 
++from pipeline.advice import apply_advice   # evidence-gated factors and actions (see pipeline/advice.py)
++
+ warnings.filterwarnings("ignore", category=UserWarning)
+ 
+ COLS = ["ID", "Severity", "Start_Time", "Start_Lat", "Start_Lng", "City", "State",
+@@ -28,28 +30,6 @@
+ FLAGS = ["Junction", "Crossing", "Traffic_Signal", "Stop", "Give_Way", "Railway",
+          "Roundabout", "Bump", "Traffic_Calming", "Station", "Amenity"]
+ 
+-ADVICE = {
+-    "share_night": "Improve street lighting and reflective signage",
+-    "share_rain": "Check drainage and anti-skid road surface",
+-    "mean_vis": "Add fog/low-visibility warnings and markings",
+-    "Junction": "Review junction layout, sight lines and signage",
+-    "Crossing": "Improve pedestrian crossings and visibility",
+-    "Traffic_Signal": "Review signal timing and placement",
+-    "Stop": "Review stop-sign visibility and approach speeds",
+-    "Give_Way": "Review give-way markings and approach speeds",
+-    "Railway": "Improve level-crossing warnings",
+-    "Roundabout": "Review roundabout approach design",
+-    "Bump": "Check speed-bump visibility and warnings",
+-    "Traffic_Calming": "Review traffic-calming effectiveness",
+-    "Station": "Manage traffic around the station entrance",
+-    "Amenity": "Manage access and parking near amenities",
+-    "n_acc": "Prioritise for a detailed site safety audit",
+-    "n_recent": "Prioritise for a detailed site safety audit",
+-    "mean_sev": "Prioritise for a detailed site safety audit",
+-    "nb_acc": "Treat the surrounding area as a cluster, audit the corridor",
+-}
+-
+-
+ def cell_of(lat, lng, res):
+     return h3.latlng_to_cell(lat, lng, res)
+ 
+@@ -165,13 +145,6 @@
+     sv = sv[1] if isinstance(sv, list) else sv
+     sv = np.asarray(sv)
+     if sv.ndim == 3: sv = sv[:, :, 1]
+-    top = np.argsort(-sv, axis=1)[:, :3]
+-    factors = [", ".join(feats[j] for j in row if sv[i, j] > 0) or "none dominant" for i, row in enumerate(top)]
+-    def ordered(i, row):  # specific actions first, neighbour-cluster advice last
+-        js = [j for j in row if sv[i, j] > 0]
+-        return sorted(js, key=lambda j: feats[j] == "nb_acc")
+-    advice = [" | ".join(dict.fromkeys(ADVICE.get(feats[j], "Site audit") for j in ordered(i, row))) or "Monitor"
+-              for i, row in enumerate(top)]
+     n = Xte["n_acc"].values
+     similar = pd.Series(p).groupby(np.digitize(n, [3, 10])).rank(pct=True).values * 100  # vs similar-history cells
+     conf = np.where(n >= 5, 2, np.where(n >= 3, 1, 0))
+@@ -186,8 +159,11 @@
+         "lng": [h3.cell_to_latlng(c)[1] for c in Xte.index],
+         "n_past_crashes": n, "risk_score": risk.round(1), "risk_vs_similar_history": similar.round(1), "history_percentile": hist_pct.round(1),
+         "confidence": pd.Series(conf).map({0: "Low", 1: "Medium", 2: "High"}).values,
+-        "top_factors": factors, "recommendations": advice,
++        "top_factors": "", "recommendations": "",
+         "emerging_risk": emerging})
++    # factors and actions: only where the model AND the cell's own crash records agree (pipeline/advice.py)
++    audit = out.emerging_risk.to_numpy() | (out.risk_score.rank(ascending=False, method="first") <= 300).to_numpy()
++    out, _ = apply_advice(out, Xte, sv, feats, audit)
+     out.sort_values("risk_score", ascending=False).to_csv(f"{args.out}/cell_scores.csv", index=False)
+     Xte.to_csv(f"{args.out}/cell_features.csv")
+     joblib.dump({"models": models, "features": feats}, f"{args.out}/model.joblib")
+--- frontend/src/components/map/DetailPanel.tsx	2026-10-08 10:33:12.000000000 +0000
++++ /home/claude/p/waymark_v1/frontend/src/components/map/DetailPanel.tsx	2026-10-08 11:31:40.540160280 +0000
+@@ -25,23 +25,38 @@
+   )
+ }
+ 
++const BASIS_MARK = ' Basis: '
++
++/** Each action is "Suggestion. Basis: the cell's own evidence." The evidence is shown beneath the suggestion. */
++function splitBasis(a: string): { action: string; basis: string | null } {
++  const i = a.indexOf(BASIS_MARK)
++  if (i < 0) return { action: a, basis: null }
++  return { action: a.slice(0, i).replace(/\.$/, ''), basis: a.slice(i + BASIS_MARK.length) }
++}
++
+ function Actions({ items }: { items: string[] }) {
+   const [done, setDone] = useState<Record<number, boolean>>({})
+   return (
+     <ul className="space-y-2">
+-      {items.map((a, i) => (
+-        <li key={i}>
+-          <label className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1.5 hover:bg-ivory-200/70">
+-            <input
+-              type="checkbox"
+-              checked={!!done[i]}
+-              onChange={(e) => setDone((d) => ({ ...d, [i]: e.target.checked }))}
+-              className="mt-1 h-5 w-5 shrink-0 accent-[#2A7F8E]"
+-            />
+-            <span className={done[i] ? 'text-navy/50 line-through' : ''}>{a}</span>
+-          </label>
+-        </li>
+-      ))}
++      {items.map((raw, i) => {
++        const { action, basis } = splitBasis(raw)
++        return (
++          <li key={i}>
++            <label className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1.5 hover:bg-ivory-200/70">
++              <input
++                type="checkbox"
++                checked={!!done[i]}
++                onChange={(e) => setDone((d) => ({ ...d, [i]: e.target.checked }))}
++                className="mt-1 h-5 w-5 shrink-0 accent-[#2A7F8E]"
++              />
++              <span className={done[i] ? 'text-navy/50 line-through' : ''}>
++                {action}
++                {basis && <span className="mt-0.5 block text-sm text-navy/70">Why: {basis}</span>}
++              </span>
++            </label>
++          </li>
++        )
++      })}
+     </ul>
+   )
+ }
+@@ -165,6 +180,10 @@
+             {detail.recommendations.length > 0 && (
+               <section>
+                 <h3 className="mb-1 text-base font-bold">Suggested actions</h3>
++                <p className="mb-2 text-sm text-navy/70">
++                  Shown only where this cell's own crash records show the condition. They are prompts for a site
++                  audit, not a diagnosis of cause.
++                </p>
+                 <Actions key={detail.cell_id} items={detail.recommendations} />
+               </section>
+             )}

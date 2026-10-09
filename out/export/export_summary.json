@@ -1,0 +1,65 @@
+{
+  "integrity": [
+    {
+      "check": "Cells match",
+      "status": "PASS",
+      "detail": "8,275 scored cells, 8,275 feature rows."
+    },
+    {
+      "check": "Saved model reproduces saved scores",
+      "status": "PASS",
+      "detail": "Spearman correlation between recomputed probability and risk_score = 1.0000."
+    },
+    {
+      "check": "SHAP exported",
+      "status": "PASS",
+      "detail": "542 cells (300 top + 242 emerging, overlap removed), top 6 features each, from model seed 0."
+    },
+    {
+      "check": "Scenario baseline equals model output",
+      "status": "PASS",
+      "detail": "66,200 scenario rows (8 combinations x 8,275 cells); low_vis sets mean_vis=1.0."
+    },
+    {
+      "check": "Recomputed metrics match metrics.json",
+      "status": "PASS",
+      "detail": "Headline metrics reproduce exactly from the saved model."
+    }
+  ],
+  "cells": 8275,
+  "low_history_cells": 2416,
+  "emerging_risk_cells": 242,
+  "scenario_rows": 66200,
+  "shap_rows": 3252,
+  "metric_rows": 22,
+  "bootstrap": {
+    "B": 2000,
+    "seed": 42,
+    "n_cells": 2416,
+    "n_blackspots": 93,
+    "model": {
+      "point": 0.23655913978494625,
+      "ci95": [
+        0.15595310907237514,
+        0.326988636363636
+      ]
+    },
+    "history": {
+      "point": 0.14531202894181489,
+      "ci95": [
+        0.1207020338075711,
+        0.170027852052671
+      ],
+      "note": "ties in past-crash count broken at random (expected value)"
+    },
+    "difference": {
+      "point": 0.09124711084313136,
+      "ci95": [
+        0.01483579217444841,
+        0.179827717045519
+      ],
+      "share_resamples_model_better": 0.99
+    }
+  },
+  "scoring_basis": "Scores use features through 2021 and are evaluated against 2022. They are a backtest-year scoring, not a forecast for 2023."
+}
