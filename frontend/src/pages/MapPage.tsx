@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { MapPin, PanelRightClose, PanelRightOpen, SlidersHorizontal } from 'lucide-react'
 import { MapContainer, TileLayer, ZoomControl } from 'react-leaflet'
 import { useSearchParams } from 'react-router-dom'
 import { cellToParent } from 'h3-js'
@@ -15,7 +16,7 @@ import { DemoTour } from '../components/map/DemoTour'
 import { DetailPanel } from '../components/map/DetailPanel'
 import { CrashLayer, FitOnce, FitToBounds, FlyController, HexLayer, WorldLimits } from '../components/map/MapLayers'
 import type { FlyTarget, LevelInfo } from '../components/map/MapLayers'
-import { Card, ErrorBanner, LogoLoader } from '../components/ui'
+import { Card, ErrorBanner } from '../components/ui'
 import { useAuth } from '../context/auth'
 import { opsApi } from '../lib/opsApi'
 import { IncidentLayer } from '../components/map/IncidentLayer'
@@ -360,10 +361,11 @@ export default function MapPage() {
       </div>
 
       {isTrafficPolice && <button type="button" onClick={() => setPickIncidentMode((v) => !v)} aria-pressed={pickIncidentMode}
-        className={`absolute bottom-4 left-2 z-[1050] min-h-11 rounded-lg px-3 py-2 text-sm font-bold shadow-card md:bottom-auto md:left-auto md:right-4 md:top-16 ${pickIncidentMode ? 'bg-brass text-navy' : 'bg-navy text-ivory'}`}>
-        {pickIncidentMode ? 'Tap a cell to place report · Cancel' : '＋ Report crash / near miss'}
+        aria-label={pickIncidentMode ? 'Cancel incident location selection' : 'Report a crash or near miss'}
+        className={`absolute bottom-4 left-2 z-[1050] inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold shadow-card md:bottom-auto md:left-auto md:right-4 md:top-16 ${pickIncidentMode ? 'bg-brass text-navy' : 'bg-navy text-ivory'}`}>
+        <MapPin aria-hidden="true" className="h-4 w-4" /> {pickIncidentMode ? 'Cancel report' : 'Report incident'}
       </button>}
-      {pickIncidentMode && <p role="status" className="pointer-events-none absolute left-1/2 top-14 z-[1040] -translate-x-1/2 rounded-full bg-navy px-3 py-2 text-center text-xs font-semibold text-ivory shadow-card md:top-24">Select the incident location on the map</p>}
+      {pickIncidentMode && <p role="status" className="pointer-events-none absolute left-1/2 top-14 z-[1040] -translate-x-1/2 rounded-full bg-navy px-3 py-2 text-center text-xs font-semibold text-ivory shadow-card md:top-24">Tap map to place report</p>}
 
       {/* Detail level hint, or the way out of region view */}
       {region ? (
@@ -372,7 +374,7 @@ export default function MapPage() {
           onClick={() => setRegion(null)}
           className="absolute right-2 top-14 z-[1000] rounded-full bg-brass px-4 py-1.5 text-sm font-semibold text-navy shadow-card hover:brightness-95 md:right-4 md:top-4"
         >
-          Region view · {regionCells.length} cells · Show all regions ✕
+          {regionCells.length} cells · All regions ×
         </button>
       ) : placeSearch ? (
         <button
@@ -380,27 +382,33 @@ export default function MapPage() {
           onClick={() => setPlaceSearch(null)}
           className="absolute right-2 top-14 z-[1000] rounded-full bg-brass px-4 py-1.5 text-sm font-semibold text-navy shadow-card hover:brightness-95 md:right-4 md:top-4"
         >
-          {placeSearch.name} · {displayedCells.length} cells · Show all ✕
+          {placeSearch.name} · {displayedCells.length} cells · Clear ×
         </button>
       ) : (
         <div className="pointer-events-none absolute right-4 top-4 z-[1000] hidden rounded-full bg-navy/90 px-4 py-1.5 text-sm font-semibold text-ivory shadow-card md:block">
           {level.points
             ? crashesAvailable === false
-              ? 'Cells (crash points not loaded)'
-              : 'Cells and crash points'
+              ? 'Cells · crash points unavailable'
+              : 'Cells + crash points'
             : level.grouped
-              ? 'Grouped hexagons · click one to open a region'
-              : 'Single cells · zoom in for crash points'}
+              ? 'Grouped cells · zoom to open'
+              : 'Single cells · zoom for crashes'}
         </div>
       )}
 
       <button
         type="button"
-        onClick={() => setLeftPaneOpen((o) => !o)}
+        onClick={() => {
+          const opening = !leftPaneOpen
+          setLeftPaneOpen(opening)
+          if (opening && window.matchMedia('(max-width: 767px)').matches) setRightPaneOpen(false)
+        }}
         aria-expanded={leftPaneOpen}
-        className="absolute left-2 top-2 z-[1060] rounded-lg bg-navy px-3 py-2 text-sm font-semibold text-ivory shadow-card"
+        aria-label={leftPaneOpen ? 'Hide map filters and legend' : 'Show map filters and legend'}
+        title={leftPaneOpen ? 'Hide filters' : 'Filters and legend'}
+        className="absolute left-2 top-2 z-[1060] inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-navy px-3 py-2 text-sm font-semibold text-ivory shadow-card"
       >
-        {leftPaneOpen ? 'Hide filters' : 'Filters & legend'}
+        <SlidersHorizontal aria-hidden="true" className="h-4 w-4" /> {leftPaneOpen ? 'Hide' : 'Filters'}
       </button>
 
       {/* Left column: filters, what-if, legend */}
@@ -449,17 +457,23 @@ export default function MapPage() {
       </div>
 
       {/* Selected-region report and cell details share the right-side pane. */}
-      {(reportTarget || selectedId) && <button type="button" onClick={() => setRightPaneOpen((o) => !o)} aria-expanded={rightPaneOpen}
-        className="absolute bottom-4 right-2 z-[1060] min-h-11 rounded-lg border border-navy/20 bg-white px-3 py-2 text-sm font-semibold text-navy shadow-card md:bottom-auto md:top-4 md:right-[28rem]">
-        {rightPaneOpen ? 'Hide details' : selectedId ? 'Show cell details' : 'Show region report'}
+      {(reportTarget || selectedId) && <button type="button" onClick={() => {
+        const opening = !rightPaneOpen
+        setRightPaneOpen(opening)
+        if (opening && window.matchMedia('(max-width: 767px)').matches) setLeftPaneOpen(false)
+      }} aria-expanded={rightPaneOpen}
+        aria-label={rightPaneOpen ? 'Hide map details' : selectedId ? 'Show cell details' : 'Show region report'}
+        title={rightPaneOpen ? 'Hide details' : selectedId ? 'Cell details' : 'Region report'}
+        className="absolute bottom-[calc(55dvh+0.75rem)] right-2 z-[1060] inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-navy/20 bg-white px-3 py-2 text-sm font-semibold text-navy shadow-card md:bottom-auto md:top-4 md:right-[28rem]">
+        {rightPaneOpen ? <PanelRightClose aria-hidden="true" className="h-4 w-4" /> : <PanelRightOpen aria-hidden="true" className="h-4 w-4" />} {rightPaneOpen ? 'Hide' : selectedId ? 'Details' : 'Report'}
       </button>}
       {(reportTarget || selectedId) && rightPaneOpen && (
         <div className={`pointer-events-none absolute inset-x-2 z-[1000] flex flex-col gap-3 md:inset-x-auto md:right-4 md:w-[26rem] ${
-          selectedId ? 'bottom-2 h-[52%] md:bottom-4 md:top-4 md:h-auto' : 'top-14 bottom-2 md:top-4'
+          selectedId ? 'bottom-2 h-[55dvh] max-h-[520px] min-h-[280px] md:bottom-4 md:top-4 md:h-auto md:max-h-none' : 'top-14 bottom-2 md:top-4'
         }`}>
           {reportTarget && (
             <div className="pointer-events-auto shrink-0">
-              <RegionCard target={reportTarget} />
+              <RegionCard target={reportTarget} compact />
             </div>
           )}
           {selectedId && (
@@ -505,8 +519,8 @@ export default function MapPage() {
 
       {/* Loading / error / empty states */}
       {cellsQ.loading && (
-        <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-ivory/80 backdrop-blur-sm">
-          <LogoLoader label="Loading cells" />
+        <div className="pointer-events-none absolute left-1/2 top-16 z-[1100] -translate-x-1/2 rounded-xl border border-navy/10 bg-white/95 px-4 py-2 shadow-card" role="status" aria-live="polite">
+          <span className="inline-flex items-center gap-2 text-sm font-semibold text-navy"><span aria-hidden="true" className="h-2.5 w-2.5 animate-pulse rounded-full bg-brass" />Loading map cells…</span>
         </div>
       )}
       {cellsQ.error && (

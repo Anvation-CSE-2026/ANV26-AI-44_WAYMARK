@@ -20,9 +20,12 @@ CONF = {"high": "High", "medium": "Medium", "low": "Low"}
 def _location_maps(db: Session, ids: list[str]) -> tuple[dict[str, str], dict[str, str]]:
     streets: dict[str, tuple[str, int]] = {}
     localities: dict[str, tuple[str, int]] = {}
+    # Large IN lists are supported by Postgres and avoid many remote round trips.
+    # Keep SQLite chunks small for older builds with a 999 bind-variable limit.
+    chunk_size = 10_000 if db.bind.dialect.name == "postgresql" else 500
     try:
-        for start in range(0, len(ids), 500):
-            part = ids[start:start + 500]
+        for start in range(0, len(ids), chunk_size):
+            part = ids[start:start + chunk_size]
             for cid, street, count in db.execute(
                     select(Crash.cell_id, Crash.street, func.count()).where(
                         Crash.cell_id.in_(part), Crash.street.is_not(None), Crash.street != "")
@@ -49,10 +52,11 @@ def _location_maps(db: Session, ids: list[str]) -> tuple[dict[str, str], dict[st
 def _incident_counts(db: Session, ids: list[str]) -> tuple[dict[str, int], dict[str, int]]:
     pending: dict[str, int] = {}
     confirmed: dict[str, int] = {}
-    for start in range(0, len(ids), 500):
+    chunk_size = 10_000 if db.bind.dialect.name == "postgresql" else 500
+    for start in range(0, len(ids), chunk_size):
         try:
             rows = db.execute(select(IncidentReport.cell_id, IncidentReport.status, func.count())
-                              .where(IncidentReport.cell_id.in_(ids[start:start + 500]),
+                              .where(IncidentReport.cell_id.in_(ids[start:start + chunk_size]),
                                      IncidentReport.status.in_(["pending", "confirmed"]))
                               .group_by(IncidentReport.cell_id, IncidentReport.status))
             for cid, status, count in rows:
@@ -111,7 +115,7 @@ def list_cells(min_score: Optional[float] = Query(None, ge=0, le=100),
     streets, localities = _location_maps(db, cell_ids) if rows else ({}, {})
     pending, confirmed = _incident_counts(db, cell_ids)
     top = top_overall_ids(db)
-    credits, projections, briefs = cell_overlay(db)
+    credits, projections, briefs = cell_overlay(db, cell_ids)
     items = [CellLite(cell_id=c.cell_id, locality=localities.get(c.cell_id), street_name=streets.get(c.cell_id),
                       incident_pending_count=pending.get(c.cell_id, 0), incident_confirmed_count=confirmed.get(c.cell_id, 0),
                       lat=c.lat, lng=c.lng, n_past_crashes=c.n_past_crashes,

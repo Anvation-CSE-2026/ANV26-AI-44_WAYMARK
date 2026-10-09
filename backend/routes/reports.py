@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from time import perf_counter
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -32,7 +33,7 @@ GENERIC_FAILURE = "The report could not be generated. Please try again; if it ke
 
 def _to_status(row: Report) -> ReportStatus:
     payload = None
-    if row.status == "ready" and row.payload_json:
+    if row.payload_json:
         payload = RegionReport.model_validate_json(row.payload_json)
     return ReportStatus(report_id=row.report_id, region_kind=row.region_kind, region_key=row.region_key,
                         status=row.status, error_safe=row.error_safe, created_at=iso_req(row.created_at), payload=payload)
@@ -47,27 +48,40 @@ def _get_row(db: Session, report_id: str) -> Report:
 
 def generate_report(engine: Engine, report_id: str) -> None:
     """Background task: build the payload and PDF, then mark the row ready or failed. Never raises."""
+    started = perf_counter()
     with Session(engine) as db:
         row = db.scalar(select(Report).where(Report.report_id == report_id))
         if row is None:
             return
         try:
+            stage = perf_counter()
             resolved = resolve_region(db, row.region_kind, row.region_key)
+            log.info("report %s: region resolved in %.2fs", report_id, perf_counter() - stage)
+            stage = perf_counter()
             analysis = analyse_region(db, resolved)
             version = data_version(_cells_by_ids(db, resolved.cell_ids))
             report = build_report(report_id, analysis, version, placeholder_weights())
+            log.info("report %s: analysis built in %.2fs", report_id, perf_counter() - stage)
+            # Publish the usable analysis before the PDF renderer runs. The client can
+            # show findings as soon as analysis is ready while the download is prepared.
+            row.payload_json = payload_text(report)
+            row.data_version = version
+            row.schema_version = report.schema_version
+            db.commit()
+
             rel = Path("reports") / f"{report_id}.pdf"
             local_pdf = settings.data_dir / rel
+            stage = perf_counter()
             render_pdf(report, local_pdf)
+            log.info("report %s: PDF rendered in %.2fs", report_id, perf_counter() - stage)
             if remote_storage_enabled():
+                stage = perf_counter()
                 try:
                     put_object(rel.as_posix(), local_pdf.read_bytes(), "application/pdf")
                 finally:
                     local_pdf.unlink(missing_ok=True)
-            row.payload_json = payload_text(report)
+                log.info("report %s: PDF uploaded in %.2fs", report_id, perf_counter() - stage)
             row.pdf_path = rel.as_posix()
-            row.data_version = version
-            row.schema_version = report.schema_version
             row.status, row.error_safe = "ready", None
         except HTTPException as e:                      # region problems carry a plain-language message already
             row.status = "failed"
@@ -77,6 +91,7 @@ def generate_report(engine: Engine, report_id: str) -> None:
             row.status, row.error_safe = "failed", GENERIC_FAILURE
             log.exception("report %s failed", report_id)
         db.commit()
+        log.info("report %s: finished with status=%s in %.2fs", report_id, row.status, perf_counter() - started)
 
 
 @router.post("/reports", status_code=202, response_model=ReportStatus)

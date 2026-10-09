@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/auth'
-import { ROLE_LABELS } from '../lib/types.ops'
-import type { RoleId } from '../lib/types.ops'
+import { LogOut, Settings, UserRound } from 'lucide-react'
 import { Logo } from './Logo'
 
 const links = [
@@ -13,56 +12,60 @@ const links = [
   { to: '/about', label: 'About', end: false },
 ]
 
-const ROLES = Object.keys(ROLE_LABELS) as RoleId[]
-
 function Account() {
-  const { user, demoLogin, logout, busy } = useAuth()
+  const { user, logout } = useAuth()
+  const [open, setOpen] = useState(false)
+  const accountRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
   if (!user) {
     return <span className="ml-auto shrink-0 text-sm text-ivory/70">Not signed in</span>
   }
-  const isDemo = user.id.startsWith('demo-') || !user.id.includes('@')
+  const initials = user.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toLocaleUpperCase() || <UserRound aria-hidden="true" className="h-5 w-5" />
   return (
-    <div className="ml-auto flex shrink-0 items-center gap-2 border-l border-white/20 pl-3">
-      <div className="max-w-[150px] text-right leading-tight" title={user.name}>
-        <span className="block truncate text-sm font-semibold text-ivory">
-          <span className="sr-only">Signed in as </span>{user.name}
-        </span>
-        <span data-testid="role-badge" className="block text-xs text-ivory/65">
-          {ROLE_LABELS[user.role]}
-        </span>
-      </div>
-      {!isDemo && (
-        <Link to="/settings" aria-label="Account settings" className="rounded-md border border-white/25 px-2.5 py-1.5 text-sm font-semibold text-ivory hover:bg-white/10">
-          <span aria-hidden="true" className="sm:hidden">⚙</span>
-          <span className="hidden sm:inline">Settings</span>
-        </Link>
-      )}
-      {isDemo && (
-        <label className="hidden text-sm sm:block">
-          <span className="sr-only">Switch demo role</span>
-          <select
-            value={user.role}
-            disabled={busy}
-            onChange={(e) => void demoLogin(e.target.value as RoleId)}
-            className="rounded-md border border-white/30 bg-navy-800 px-2 py-1 text-sm text-ivory"
-          >
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABELS[r]}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+    <div ref={accountRef} className="relative ml-auto shrink-0 border-l border-white/20 pl-3">
       <button
+        ref={triggerRef}
         type="button"
-        onClick={logout}
-        aria-label="Sign out"
-        className="rounded-md bg-red-700 px-2.5 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-600"
+        aria-label={`Open profile menu for ${user.name}`}
+        aria-expanded={open}
+        aria-controls="account-menu"
+        onClick={() => setOpen((value) => !value)}
+        className="grid h-11 w-11 place-items-center rounded-full border border-brass/60 bg-white/10 text-sm font-bold text-ivory transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass"
       >
-        <span aria-hidden="true" className="sm:hidden">✕</span>
-        <span className="hidden sm:inline">Sign out</span>
+        {initials}
       </button>
+      {open && (
+        <div id="account-menu" role="group" aria-label="Account options" className="absolute right-0 top-full z-[1300] mt-2 w-56 rounded-xl border border-navy/10 bg-white p-2 text-navy shadow-lift">
+          <p className="truncate px-3 py-2 text-sm font-semibold" title={user.name}>{user.name}</p>
+          <div className="my-1 border-t border-navy/10" />
+          <Link to="/settings" onClick={() => setOpen(false)} className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-navy/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brass">
+            <Settings aria-hidden="true" className="h-4 w-4" /> Settings
+          </Link>
+          <button type="button" onClick={() => { setOpen(false); logout() }} className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium text-brick hover:bg-brick/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brick">
+            <LogOut aria-hidden="true" className="h-4 w-4" /> Log out
+          </button>
+        </div>
+      )}
     </div>
   )
 }

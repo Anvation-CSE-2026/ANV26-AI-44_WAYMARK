@@ -12,12 +12,15 @@ from __future__ import annotations
 
 import hashlib
 import math
+from threading import Lock
+from weakref import WeakKeyDictionary
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
 import h3
 from fastapi import HTTPException
 from sqlalchemy import func, inspect, select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -30,6 +33,8 @@ REGION_KINDS = ("h3_parent", "locality", "bbox")
 INDEX_METHOD = "Mean risk score of the cells in the region (the same aggregation the map uses for grouped hexagons)."
 TOP_HOTSPOTS = 10
 _CHUNK = 500
+_night_share_cache: WeakKeyDictionary[Engine, Optional[float]] = WeakKeyDictionary()
+_night_share_lock = Lock()
 
 
 @dataclass
@@ -146,19 +151,28 @@ def _crash_aggregates(db: Session, cell_ids: list[str]) -> dict:
     total = night = severe = sev_known = night_known = 0
     by_cell_street: dict[str, dict[str, int]] = {}
     for part in _chunks(cell_ids):
-        for year, n in db.execute(select(Crash.year, func.count()).where(Crash.cell_id.in_(part), Crash.year.is_not(None))
-                                  .group_by(Crash.year)):
-            years[int(year)] = years.get(int(year), 0) + int(n)
-        for hh, n in db.execute(select(func.substr(Crash.start_time, 12, 2), func.count())
-                                .where(Crash.cell_id.in_(part), Crash.start_time.is_not(None))
-                                .group_by(func.substr(Crash.start_time, 12, 2))):
+        hour_expr = func.substr(Crash.start_time, 12, 2)
+        # One grouped pass supplies annual, hourly, total, night and severity summaries.
+        # The previous implementation scanned the region's crash rows four times.
+        grouped = db.execute(
+            select(Crash.year, hour_expr, Crash.night, Crash.severity, func.count())
+            .where(Crash.cell_id.in_(part))
+            .group_by(Crash.year, hour_expr, Crash.night, Crash.severity)
+        )
+        for year, hh, night_value, severity, count in grouped:
+            count = int(count)
+            total += count
+            if year is not None:
+                years[int(year)] = years.get(int(year), 0) + count
             if hh and hh.isdigit() and 0 <= int(hh) <= 23:
-                hours[int(hh)] += int(n)
-        t, nt, nk, sv, sk = db.execute(select(
-            func.count(), func.sum(Crash.night), func.count(Crash.night),
-            func.sum(func.iif(Crash.severity >= 3, 1, 0)), func.count(Crash.severity)).where(Crash.cell_id.in_(part))).one()
-        total += int(t or 0); night += int(nt or 0); night_known += int(nk or 0)
-        severe += int(sv or 0); sev_known += int(sk or 0)
+                hours[int(hh)] += count
+            if night_value is not None:
+                night_known += count
+                night += int(night_value) * count
+            if severity is not None:
+                sev_known += count
+                if int(severity) >= 3:
+                    severe += count
         for cid, street, n in db.execute(select(Crash.cell_id, Crash.street, func.count())
                                          .where(Crash.cell_id.in_(part), Crash.street.is_not(None), Crash.street != "")
                                          .group_by(Crash.cell_id, Crash.street)):
@@ -170,8 +184,16 @@ def _crash_aggregates(db: Session, cell_ids: list[str]) -> dict:
 
 
 def _dataset_night_share(db: Session) -> Optional[float]:
-    n, k = db.execute(select(func.sum(Crash.night), func.count(Crash.night))).one()
-    return (n or 0) / k if k else None
+    engine_key = db.get_bind()
+    if engine_key in _night_share_cache:
+        return _night_share_cache[engine_key]
+    # This value is unchanged between report requests; cache the whole-dataset aggregate
+    # for the process lifetime instead of scanning the full crashes table each time.
+    with _night_share_lock:
+        if engine_key not in _night_share_cache:
+            n, k = db.execute(select(func.sum(Crash.night), func.count(Crash.night))).one()
+            _night_share_cache[engine_key] = (n or 0) / k if k else None
+        return _night_share_cache[engine_key]
 
 
 def _complete_years(db: Session) -> Optional[set[int]]:

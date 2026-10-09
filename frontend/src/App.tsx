@@ -53,7 +53,7 @@ function AppContent() {
           </Routes>
         </Suspense>
       </main>
-      <Footer />
+      {pathname !== '/map' && <Footer />}
     </div>
   )
 }

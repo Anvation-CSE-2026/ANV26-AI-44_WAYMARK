@@ -163,6 +163,10 @@ export function AnalysisTab({
         await sleep(delay)
         delay = Math.min(Math.round(delay * 1.5), 3000)
         status = await opsApi.getReport(status.report_id)
+        if (status.payload) {
+          setReport(status.payload)
+          setMessage(status.status === 'pending' ? 'Analysis ready. Preparing the downloadable report…' : '')
+        }
       }
       if (mine !== run.current) return
       if (status.status === 'ready' && status.payload) {
@@ -170,6 +174,7 @@ export function AnalysisTab({
         setPhase('idle')
         setMessage('')
       } else {
+        if (status.payload) setReport(status.payload)
         setPhase('failed')
         setFailure(status.error_safe ?? 'The report could not be generated.')
       }
@@ -270,13 +275,13 @@ export function AnalysisTab({
                 <p className="mt-1 text-sm text-navy/60">Generated {fmtDate(report.generated_at)}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void download(report.report_id, 'pdf')} className="inline-flex items-center gap-2 rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm font-bold transition hover:bg-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">
+                <button type="button" disabled={working} onClick={() => void download(report.report_id, 'pdf')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm font-bold transition hover:bg-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass disabled:cursor-wait disabled:opacity-50">
                   <FileDown aria-hidden="true" className="h-4 w-4" />PDF
                 </button>
-                <button type="button" onClick={() => void download(report.report_id, 'json')} className="inline-flex items-center gap-2 rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm font-bold transition hover:bg-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">
+                <button type="button" disabled={working} onClick={() => void download(report.report_id, 'json')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm font-bold transition hover:bg-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass disabled:cursor-wait disabled:opacity-50">
                   JSON
                 </button>
-                <button type="button" onClick={() => onAsk(report)} className="inline-flex items-center gap-2 rounded-xl bg-navy px-3.5 py-2.5 text-sm font-bold text-ivory transition hover:bg-navy-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">
+                <button type="button" disabled={working} onClick={() => onAsk(report)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-navy px-3.5 py-2.5 text-sm font-bold text-ivory transition hover:bg-navy-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass disabled:cursor-wait disabled:opacity-50">
                   <Sparkles aria-hidden="true" className="h-4 w-4" />Ask assistant
                 </button>
               </div>

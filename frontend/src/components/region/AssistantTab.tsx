@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent, FormEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Check, FileText, Landmark, MapPin, Paperclip, RotateCw, Send, ShieldCheck, Sparkles, Square, Users, Wrench } from 'lucide-react'
+import { Check, FileText, MapPin, Paperclip, RotateCw, Send, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { ApiError } from '../../lib/api'
 import { opsApi } from '../../lib/opsApi'
 import { ROLE_LABELS } from '../../lib/types.ops'
@@ -11,25 +11,16 @@ import { Card } from '../ui'
 import { useAuth } from '../../context/auth'
 import { categoryLabel, fmtDate, useEffects } from '../ops/util'
 
-const ROLE_INFO: Record<RoleId, { blurb: string; starters: string[] }> = {
+const ROLE_INFO: Record<RoleId, { starters: string[] }> = {
   planner: {
-    blurb: 'Set priorities, sequence safety work, and review evidence before approving measures.',
     starters: ['What should we do first?', 'Which cells should be audited before anything else?', 'What evidence should I ask for before approving a measure?'],
   },
   engineer: {
-    blurb: 'Deliver road safety measures, inspect sites, and document the work.',
     starters: ['What should we inspect on site first?', 'Which measures can we deliver at the top hotspots?', 'What photos should I take as evidence?'],
   },
   community: {
-    blurb: 'Focus on traffic safety operations, site observations, and coordination with planners.',
     starters: ['Which hotspots need traffic safety attention first?', 'What should officers document during a site visit?', 'What should Traffic Police coordinate with City Planners?'],
   },
-}
-
-const ROLE_ICONS: Record<RoleId, typeof Landmark> = {
-  planner: Landmark,
-  engineer: Wrench,
-  community: Users,
 }
 
 interface UiMessage {
@@ -84,7 +75,7 @@ export function AssistantTab({
   const [attachNote, setAttachNote] = useState<{ ok: boolean; text: string } | null>(null)
   const [attaching, setAttaching] = useState(false)
   const [dragging, setDragging] = useState(false)
-  const [creating, setCreating] = useState<RoleId | null>(null)
+  const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [msgs, setMsgs] = useState<UiMessage[]>([])
   const [input, setInput] = useState('')
@@ -94,17 +85,18 @@ export function AssistantTab({
   const seq = useRef(0)
   const listRef = useRef<HTMLDivElement>(null)
   const lastAuto = useRef<string>('')
+  const identityRef = useRef<string>('')
 
-  const role = session?.role ?? null
+  const role = session?.role ?? user?.role ?? null
   const anyFallback = msgs.some((m) => m.fallback)
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
   }, [msgs])
 
-  const startSession = async (r: RoleId) => {
+  const startSession = useCallback(async (r: RoleId) => {
     abortRef.current?.abort()
-    setCreating(r)
+    setCreating(true)
     setCreateError(null)
     try {
       const s = await opsApi.createSession(r)
@@ -117,9 +109,21 @@ export function AssistantTab({
     } catch (e) {
       setCreateError(e instanceof ApiError ? e.message : 'Could not start a chat. Please try again.')
     } finally {
-      setCreating(null)
+      setCreating(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    const identity = `${user.id}:${user.role}`
+    if (identityRef.current === identity) return
+    identityRef.current = identity
+    abortRef.current?.abort()
+    setSession(null)
+    setMsgs([])
+    setCards({})
+    void startSession(user.role)
+  }, [user?.id, user?.role, startSession])
 
   const attachFile = useCallback(
     async (file: Blob, name: string) => {
@@ -241,7 +245,7 @@ export function AssistantTab({
 
   const otherRegion = chip && (chip.region.kind !== kind || chip.region.key !== regionKey)
 
-  // ------------------------------------------------------------------ role selector
+  // ------------------------------------------------------------------ session startup
   if (!session) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center py-6 sm:py-10">
@@ -252,36 +256,15 @@ export function AssistantTab({
             <h2 className="font-serif text-3xl font-bold tracking-tight sm:text-4xl">How can I help?</h2>
           </div>
         </div>
-        <p className="mb-6 max-w-2xl leading-relaxed text-navy/70">
-          Choose your workspace to tailor the guidance and proposed actions to your role.
-        </p>
+        <p className="mb-6 max-w-2xl leading-relaxed text-navy/70">Preparing your workspace{role ? ` for ${ROLE_LABELS[role]}` : ''}.</p>
         {attachReport && (
           <p role="note" className="mb-5 flex items-center gap-2 rounded-xl border border-brass/30 bg-brass/10 px-4 py-3 text-sm font-semibold text-navy">
             <FileText aria-hidden="true" className="h-4 w-4 shrink-0 text-brass-700" />
             Report {attachReport.report_id} will be attached when you start.
           </p>
         )}
-        <div role="group" aria-label="Choose a role" className="grid gap-4 md:grid-cols-3">
-          {(Object.keys(ROLE_INFO) as RoleId[]).map((r) => {
-            const RoleIcon = ROLE_ICONS[r]
-            return <button
-              key={r}
-              type="button"
-              disabled={creating !== null}
-              onClick={() => void startSession(r)}
-              className="group relative flex min-h-52 flex-col rounded-2xl border border-navy/10 bg-white p-5 text-left shadow-card transition duration-200 hover:-translate-y-1 hover:border-brass/60 hover:shadow-lift focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass disabled:pointer-events-none disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none"
-            >
-              <span className="mb-5 flex items-start justify-between">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-ivory text-navy transition-colors group-hover:bg-brass/15"><RoleIcon aria-hidden="true" className="h-5 w-5" /></span>
-                <ArrowUpRight aria-hidden="true" className="h-5 w-5 text-navy/35 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brass-700" />
-              </span>
-              <span className="block font-serif text-xl font-bold leading-tight">{ROLE_LABELS[r]}</span>
-              <span className="mt-2 block text-sm leading-relaxed text-navy/70">{ROLE_INFO[r].blurb}</span>
-              <span className="mt-auto pt-5 text-sm font-bold text-teal">{creating === r ? 'Starting your chat…' : 'Continue as this role'}</span>
-            </button>
-          })}
-        </div>
-        {createError && <p role="alert" className="mt-4 rounded-xl border border-brick/25 bg-brick/5 px-4 py-3 font-semibold text-brick">{createError}</p>}
+        {creating && <p role="status" className="rounded-xl border border-navy/10 bg-white px-4 py-4 font-medium text-navy/75 shadow-card">Starting your chat…</p>}
+        {createError && <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-brick/25 bg-brick/5 px-4 py-3 font-semibold text-brick"><p role="alert">{createError}</p><button type="button" onClick={() => user && void startSession(user.role)} className="min-h-10 rounded-lg bg-navy px-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">Try again</button></div>}
       </div>
     )
   }
@@ -298,9 +281,6 @@ export function AssistantTab({
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-ivory sm:text-sm">{role && ROLE_LABELS[role]}</span>
-          <button type="button" onClick={() => setSession(null)} className="rounded-full px-3 py-2 text-xs font-semibold text-ivory/75 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass sm:text-sm">
-            Change role
-          </button>
         </div>
       </div>
 
