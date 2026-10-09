@@ -83,8 +83,11 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-[1200] bg-navy text-ivory shadow-card">
       <div className="relative flex h-16 w-full items-center gap-2 px-2 sm:gap-4 sm:px-4">
-        <Link to="/" aria-label="WAYMARK home" className="shrink-0">
-          <Logo tone="dark" wordmarkClass="max-[420px]:hidden" />
+        <button type="button" className="order-first grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-white/25 text-xl lg:hidden" aria-expanded={menuOpen} aria-controls="mobile-primary-nav" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} onClick={() => setMenuOpen((v) => !v)}>
+          <span aria-hidden="true">{menuOpen ? '×' : '☰'}</span>
+        </button>
+        <Link to="/" aria-label="WAYMARK home" className="absolute left-1/2 shrink-0 -translate-x-1/2 lg:static lg:transform-none">
+          <Logo tone="dark" />
         </Link>
         <nav aria-label="Primary" className="ml-auto hidden min-w-0 gap-1 overflow-x-auto lg:flex lg:absolute lg:left-1/2 lg:ml-0 lg:-translate-x-1/2">
           {allLinks.map((l) => (
@@ -99,9 +102,6 @@ export function Nav() {
           ))}
         </nav>
         <Account />
-        <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-white/25 text-xl lg:hidden" aria-expanded={menuOpen} aria-controls="mobile-primary-nav" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} onClick={() => setMenuOpen((v) => !v)}>
-          <span aria-hidden="true">{menuOpen ? '×' : '☰'}</span>
-        </button>
       </div>
       {menuOpen && <nav id="mobile-primary-nav" aria-label="Mobile primary" className="absolute inset-x-0 top-full z-[1201] grid gap-1 border-t border-white/10 bg-navy p-3 shadow-card lg:hidden">
         {allLinks.map((l) => <NavLink key={l.to} to={l.to} end={l.end} className={navClass} onClick={() => setMenuOpen(false)}>{l.label}</NavLink>)}

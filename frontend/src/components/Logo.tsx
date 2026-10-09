@@ -42,7 +42,7 @@ export function Logo({ tone = 'light', size = 34, wordmarkClass = '' }: LogoProp
     <span className="inline-flex items-center gap-3">
       <LogoMark size={size} />
       <span
-        className={`font-serif text-[1.35rem] font-bold leading-none tracking-[0.2em] ${
+        className={`font-serif text-[1.1rem] font-bold leading-none tracking-[0.16em] sm:text-[1.2rem] ${
           tone === 'dark' ? 'text-ivory' : 'text-navy'
         } ${wordmarkClass}`}
       >

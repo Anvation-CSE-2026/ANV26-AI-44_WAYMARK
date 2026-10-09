@@ -11,14 +11,18 @@ export default function AuthPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const mode = params.get('mode') === 'signup' ? 'signup' : 'login'
-  const notice = (location.state as { notice?: unknown } | null)?.notice
+  const authState = location.state as { notice?: unknown; returnTo?: unknown } | null
+  const notice = authState?.notice
+  const destination = typeof authState?.returnTo === 'string' && authState.returnTo.startsWith('/') && !authState.returnTo.startsWith('//')
+    ? authState.returnTo
+    : '/map'
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<RoleId>('community')
   const [showPassword, setShowPassword] = useState(false)
 
-  if (user) return <Navigate to="/map" replace />
+  if (user) return <Navigate to={destination} replace />
 
   const switchMode = (next: 'login' | 'signup') => {
     setParams({ mode: next }, { replace: true })
@@ -30,10 +34,6 @@ export default function AuthPage() {
       ? await login(email, password)
       : await signup(name, email, password, role)
     if (success) {
-      const returnTo = (location.state as { returnTo?: unknown } | null)?.returnTo
-      const destination = typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')
-        ? returnTo
-        : '/map'
       navigate(destination, { replace: true })
     }
   }
