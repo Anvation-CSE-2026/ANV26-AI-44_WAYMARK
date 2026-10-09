@@ -415,7 +415,7 @@ export default function MapPage() {
 
       {/* Left column: filters, what-if, legend */}
       <div
-        className={`pointer-events-none absolute inset-x-2 top-14 z-[1000] ${selectedId || reportTarget ? 'max-h-[36dvh]' : 'max-h-[70dvh]'} space-y-3 overflow-y-auto md:inset-x-auto md:bottom-4 md:left-4 md:top-4 md:max-h-none md:w-[22rem] ${leftPaneOpen ? 'block' : 'hidden'}`}
+        className={`pointer-events-none absolute inset-x-2 top-44 z-[1000] ${selectedId || reportTarget ? 'max-h-[36dvh]' : 'max-h-[70dvh]'} space-y-3 overflow-y-auto md:inset-x-auto md:bottom-4 md:left-4 md:top-4 md:max-h-none md:w-[22rem] ${leftPaneOpen ? 'block' : 'hidden'}`}
       >
         <div className="pointer-events-auto">
           <FilterCard
@@ -511,7 +511,7 @@ export default function MapPage() {
 
       {/* Loading / error / empty states */}
       {cellsQ.loading && (
-        <div className="pointer-events-none absolute left-1/2 top-24 z-[1100] -translate-x-1/2 rounded-xl border border-navy/10 bg-white/95 px-4 py-2 shadow-card md:top-16" role="status" aria-live="polite">
+        <div className="pointer-events-none absolute bottom-20 left-1/2 z-[1100] -translate-x-1/2 rounded-xl border border-navy/10 bg-white/95 px-4 py-2 shadow-card md:bottom-auto md:top-16" role="status" aria-live="polite">
           <span className="inline-flex items-center gap-2 text-sm font-semibold text-navy"><span aria-hidden="true" className="h-2.5 w-2.5 animate-pulse rounded-full bg-brass" />Loading map cells…</span>
         </div>
       )}
