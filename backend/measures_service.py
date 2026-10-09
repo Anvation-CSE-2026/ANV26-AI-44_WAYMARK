@@ -21,7 +21,7 @@ from .ops_common import api_error, iso, iso_req
 from .permissions import can
 from .regions import ResolvedRegion, _cells_by_ids, region_risk_index, resolve_region, round_index
 from .risk_overlay import (EXCLUDED_STATUSES, adjusted_region_index, adjusted_score, combined_credit,
-                           implementation_pct, verified_pct)
+                           implementation_pct, projected_credit, verified_pct)
 from .schemas_ops import (CellMeasureBrief, Evidence as EvidenceOut, Measure as MeasureOut, MeasureDetail,
                           MeasureEvent as EventOut, MeasureStatus, Progress, RiskSnapshotOut)
 
@@ -76,6 +76,7 @@ def to_schema(m: Measure, cell_ids: list[str], ev_count: int) -> MeasureOut:
         category=m.category, category_label=cat.label if cat else m.category, description=m.description,
         owner_role=Role(m.owner_role), status=MeasureStatus(m.status), effect_weight=m.effect_weight_snapshot,
         source=m.source, created_by=m.created_by, created_at=iso_req(m.created_at), updated_at=iso_req(m.updated_at),
+        due_at=iso_req(m.due_at) if m.due_at else None, progress_note=m.progress_note,
         cell_ids=cell_ids, evidence_count=ev_count, evidence_required=list(cat.evidence_required) if cat else [])
 
 
@@ -99,7 +100,7 @@ def allowed_next_for(m: Measure, user: User) -> list[MeasureStatus]:
             ok = can(user.role, "measure.verify")
         else:
             ok = can(user.role, "measure.transition")
-        if ok:
+        if ok and (user.role is Role.planner or m.owner_role == user.role.value):
             out.append(MeasureStatus(to))
     return out
 
@@ -138,6 +139,20 @@ def cell_credit_map(db: Session, cell_ids: Iterable[str]) -> dict[str, float]:
     return {cid: combined_credit(ms) for cid, ms in by_cell.items()}
 
 
+def cell_projected_credit_map(db: Session, cell_ids: Iterable[str]) -> dict[str, float]:
+    """Stage-weighted implementation estimate per cell, including all active measures."""
+    ids = list(cell_ids)
+    by_cell: dict[str, list[_Credit]] = defaultdict(list)
+    for i in range(0, len(ids), 500):
+        for cid, status, w in db.execute(
+                select(MeasureCell.cell_id, Measure.status, Measure.effect_weight_snapshot)
+                .join(Measure, Measure.id == MeasureCell.measure_id)
+                .where(MeasureCell.cell_id.in_(ids[i:i + 500]),
+                       Measure.status.not_in(sorted(EXCLUDED_STATUSES)))):
+            by_cell[cid].append(_Credit(status, w))
+    return {cid: projected_credit(ms) for cid, ms in by_cell.items()}
+
+
 def region_numbers(db: Session, resolved: ResolvedRegion) -> dict:
     """base / adjusted index and the two percentages for a region, from the current rows."""
     region = resolved.region
@@ -145,10 +160,12 @@ def region_numbers(db: Session, resolved: ResolvedRegion) -> dict:
                                                      Measure.status.not_in(sorted(EXCLUDED_STATUSES)))))
     cells = _cells_by_ids(db, resolved.cell_ids)
     credit = cell_credit_map(db, resolved.cell_ids)
+    projected_credit_by_cell = cell_projected_credit_map(db, resolved.cell_ids)
     base = region_risk_index(cells)
     adjusted = adjusted_region_index((c.risk_score, credit.get(c.cell_id, 0.0)) for c in cells)
+    projected = adjusted_region_index((c.risk_score, projected_credit_by_cell.get(c.cell_id, 0.0)) for c in cells)
     return {"measures": measures, "base": base, "adjusted": adjusted,
-            "implementation": implementation_pct(measures), "verified": verified_pct(measures)}
+            "projected": projected, "implementation": implementation_pct(measures), "verified": verified_pct(measures)}
 
 
 def record_snapshot(db: Session, m: Measure) -> None:
@@ -174,6 +191,7 @@ def region_progress(db: Session, kind: str, key: str) -> Progress:
     return Progress(
         region=resolved.region, measures=to_schemas(db, ordered), implementation_pct=round(n["implementation"], 1),
         verified_pct=round(n["verified"], 1), base_index=round_index(n["base"]), adjusted_index=round_index(n["adjusted"]),
+        projected_index=round_index(n["projected"]),
         credit_cap=get_effects().credit_cap, placeholder_weights=placeholder_weights(),
         snapshots=[RiskSnapshotOut(created_at=iso_req(s.created_at), base_index=s.base_index,
                                    adjusted_index=s.adjusted_index, implementation_pct=s.implementation_pct,
@@ -211,6 +229,9 @@ def apply_transition(db: Session, m: Measure, to: str, user: User, note: Optiona
                         + (f"Allowed next: {', '.join(allowed)}." if allowed else "It is final."), allowed=allowed,
                         current=frm)
 
+    if user.role is not Role.planner and m.owner_role != user.role.value:
+        raise api_error(403, "wrong_measure_owner", "Only the assigned workspace can update this measure.")
+
     event_type = "transition"
     if frm == "evidence_submitted":
         if not can(user.role, "measure.verify"):
@@ -240,8 +261,8 @@ def apply_transition(db: Session, m: Measure, to: str, user: User, note: Optiona
 
 
 # ------------------------------------------------------------------ cells overlay (additive fields on /api/cells)
-def cell_overlay(db: Session, cell_ids: Optional[Iterable[str]] = None) -> tuple[dict[str, float], dict[str, list[CellMeasureBrief]]]:
-    """(credit per cell, compact measures per cell) for cells with at least one active measure.
+def cell_overlay(db: Session, cell_ids: Optional[Iterable[str]] = None) -> tuple[dict[str, float], dict[str, float], dict[str, list[CellMeasureBrief]]]:
+    """(verified credit, projected credit, compact measures) for cells with active measures.
 
     Returns empty maps when the operations tables do not exist (an old database), so /api/cells keeps working.
     """
@@ -253,14 +274,17 @@ def cell_overlay(db: Session, cell_ids: Optional[Iterable[str]] = None) -> tuple
             q = q.where(MeasureCell.cell_id.in_(list(cell_ids)))
         rows = db.execute(q.order_by(Measure.id)).all()
     except OperationalError:
-        return {}, {}
+        return {}, {}, {}
     briefs: dict[str, list[CellMeasureBrief]] = defaultdict(list)
     credits: dict[str, list[_Credit]] = defaultdict(list)
+    projections: dict[str, list[_Credit]] = defaultdict(list)
     for cid, mid, title, status, category, w, rkind, rkey in rows:
         briefs[cid].append(CellMeasureBrief(id=mid, title=title, status=status, category=category,
                                             region_kind=rkind, region_key=rkey))
         credits[cid].append(_Credit(status, w))
-    return {cid: combined_credit(ms) for cid, ms in credits.items()}, dict(briefs)
+        projections[cid].append(_Credit(status, w))
+    return ({cid: combined_credit(ms) for cid, ms in credits.items()},
+            {cid: projected_credit(ms) for cid, ms in projections.items()}, dict(briefs))
 
 
 def overlay_fields(base: Optional[float], credit: float) -> Optional[float]:

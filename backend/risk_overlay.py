@@ -53,6 +53,17 @@ def combined_credit(cell_measures: Iterable[MeasureLike], credit_cap: Optional[f
     return min(1.0 - remaining, cap)
 
 
+def projected_credit(cell_measures: Iterable[MeasureLike], credit_cap: Optional[float] = None) -> float:
+    """Stage-weighted implementation estimate; this is not verified mitigation."""
+    cap = get_effects().credit_cap if credit_cap is None else credit_cap
+    remaining = 1.0
+    for m in _active(cell_measures):
+        stage = min(max(float(stage_factor(m.status)), 0.0), 1.0)
+        weight = min(max(float(m.effect_weight_snapshot), 0.0), 1.0)
+        remaining *= 1.0 - weight * stage
+    return min(1.0 - remaining, cap)
+
+
 def adjusted_score(base: Optional[float], credit: float) -> Optional[float]:
     """base * (1 - credit), clamped to [0, base]."""
     if base is None:

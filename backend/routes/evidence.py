@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..auth import User
+from ..auth import Role, User
 from ..config import settings
 from ..db import get_db
 from ..evidence_service import (BadImage, caption_from_filename, clean_caption, geo_flag, is_stale, process_image,
@@ -52,6 +52,8 @@ def upload_evidence(measure_id: int, request: Request, file: UploadFile = File(.
                     caption: str = Form(""), db: Session = Depends(get_db),
                     user: User = Depends(require_permission("evidence.upload"))):
     m = get_measure(db, measure_id)
+    if user.role is not Role.planner and not (user.role is Role.engineer and m.owner_role == Role.engineer.value):
+        raise api_error(403, "wrong_measure_owner", "Only the assigned workspace can upload measure evidence.")
     if rate_limited(user.id):
         raise api_error(429, "rate_limited", f"Too many uploads. Wait a minute and try again "
                                               f"(limit {settings.upload_rate_per_min} per minute).")

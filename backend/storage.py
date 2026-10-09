@@ -67,6 +67,17 @@ def ensure_private_bucket() -> None:
         raise RuntimeError("Supabase Storage credentials are not configured.")
     bucket = settings.supabase_storage_bucket
     with httpx.Client(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+        existing = client.get(_remote_url(f"bucket/{quote(bucket, safe='')}"), headers=_headers())
+        if existing.status_code == 200:
+            try:
+                is_public = bool(existing.json().get("public"))
+            except (ValueError, AttributeError):
+                raise StorageError("Could not verify Supabase bucket privacy.") from None
+            if is_public:
+                raise StorageError("The waymark-files bucket must be private.")
+            return
+        if existing.status_code != 404:
+            _check(existing)
         response = client.post(
             _remote_url("bucket"),
             headers=_headers("application/json"),
@@ -74,7 +85,17 @@ def ensure_private_bucket() -> None:
                   "allowed_mime_types": ["image/jpeg", "application/pdf"]},
         )
         if response.status_code not in (200, 201, 409):
-            _check(response)
+            # Supabase Storage versions can encode an existing bucket as HTTP 400
+            # while exposing the duplicate condition in the JSON error code.
+            try:
+                duplicate = response.status_code == 400 and response.json().get("code") == "BucketAlreadyExists"
+            except (ValueError, AttributeError):
+                duplicate = False
+            if duplicate:
+                response = client.get(_remote_url(f"bucket/{quote(bucket, safe='')}"), headers=_headers())
+                _check(response)
+            else:
+                _check(response)
         if response.status_code == 409:
             existing = client.get(_remote_url(f"bucket/{quote(bucket, safe='')}"), headers=_headers())
             _check(existing)

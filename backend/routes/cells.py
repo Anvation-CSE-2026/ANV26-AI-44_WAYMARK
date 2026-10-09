@@ -2,17 +2,65 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..measures_service import cell_overlay, overlay_fields
 from ..models import Cell, CellScenario, CellShap, Crash
+from ..models_ops import IncidentReport
 from ..schemas import AUDIT_BANNER, CellDetail, CellLite, CellList, ScenarioItem, ShapItem
 from ..services import (FEATURE_LABELS, confidence_explanation, headline_text, maps_url, split_list,
                         top_overall_ids)
 
 router = APIRouter(prefix="/api", tags=["cells"])
 CONF = {"high": "High", "medium": "Medium", "low": "Low"}
+
+
+def _location_maps(db: Session, ids: list[str]) -> tuple[dict[str, str], dict[str, str]]:
+    streets: dict[str, tuple[str, int]] = {}
+    localities: dict[str, tuple[str, int]] = {}
+    try:
+        for start in range(0, len(ids), 500):
+            part = ids[start:start + 500]
+            for cid, street, count in db.execute(
+                    select(Crash.cell_id, Crash.street, func.count()).where(
+                        Crash.cell_id.in_(part), Crash.street.is_not(None), Crash.street != "")
+                    .group_by(Crash.cell_id, Crash.street)):
+                if cid not in streets or count > streets[cid][1]:
+                    streets[cid] = (street, count)
+            locality_expr = func.coalesce(
+                func.nullif(func.trim(Crash.city), ""),
+                func.nullif(func.trim(Crash.county), ""),
+                func.nullif(func.trim(Crash.zipcode), ""),
+            )
+            for cid, locality, count in db.execute(
+                    select(Crash.cell_id, locality_expr, func.count())
+                    .where(Crash.cell_id.in_(part))
+                    .group_by(Crash.cell_id, locality_expr)):
+                if locality and (cid not in localities or count > localities[cid][1]):
+                    localities[cid] = (locality, count)
+    except OperationalError:
+        db.rollback()
+        return {}, {}
+    return ({k: v[0] for k, v in streets.items()}, {k: v[0] for k, v in localities.items()})
+
+
+def _incident_counts(db: Session, ids: list[str]) -> tuple[dict[str, int], dict[str, int]]:
+    pending: dict[str, int] = {}
+    confirmed: dict[str, int] = {}
+    for start in range(0, len(ids), 500):
+        try:
+            rows = db.execute(select(IncidentReport.cell_id, IncidentReport.status, func.count())
+                              .where(IncidentReport.cell_id.in_(ids[start:start + 500]),
+                                     IncidentReport.status.in_(["pending", "confirmed"]))
+                              .group_by(IncidentReport.cell_id, IncidentReport.status))
+            for cid, status, count in rows:
+                (pending if status == "pending" else confirmed)[cid] = int(count)
+        except OperationalError:
+            db.rollback()
+            return {}, {}
+    return pending, confirmed
 
 
 def parse_bbox(bbox: str) -> tuple[float, float, float, float]:
@@ -32,7 +80,7 @@ def list_cells(min_score: Optional[float] = Query(None, ge=0, le=100),
                confidence: Optional[str] = Query(None, description="High, Medium, Low (comma-separated allowed)"),
                emerging_only: bool = False,
                bbox: Optional[str] = Query(None, description="south,west,north,east"),
-               include_locality: bool = False,
+               include_locality: bool = True,
                limit: int = Query(10000, ge=1, le=20000), offset: int = Query(0, ge=0),
                db: Session = Depends(get_db)):
     where = []
@@ -57,26 +105,21 @@ def list_cells(min_score: Optional[float] = Query(None, ge=0, le=100),
     rows = db.scalars(select(Cell).where(*where)
                       .order_by(Cell.risk_score.desc(), Cell.baseline_prob.desc(), Cell.cell_id)
                       .limit(limit).offset(offset)).all()
-    localities: dict[str, str] = {}
-    if include_locality and rows:
-        cell_ids = [c.cell_id for c in rows]
-        for start in range(0, len(cell_ids), 500):
-            locality_rows = db.execute(
-                select(
-                    Crash.cell_id,
-                    func.coalesce(func.min(Crash.city), func.min(Crash.street), func.min(Crash.zipcode)),
-                )
-                .where(Crash.cell_id.in_(cell_ids[start:start + 500]))
-                .group_by(Crash.cell_id)
-            )
-            localities.update({cell_id: name for cell_id, name in locality_rows if name})
+    cell_ids = [c.cell_id for c in rows]
+    # Cell location labels are part of the standard list contract; the query arg remains
+    # accepted for compatibility with older clients that opt in explicitly.
+    streets, localities = _location_maps(db, cell_ids) if rows else ({}, {})
+    pending, confirmed = _incident_counts(db, cell_ids)
     top = top_overall_ids(db)
-    credits, briefs = cell_overlay(db)               # additive: cells with measures and their verified credit
-    items = [CellLite(cell_id=c.cell_id, locality=localities.get(c.cell_id), lat=c.lat, lng=c.lng, n_past_crashes=c.n_past_crashes,
+    credits, projections, briefs = cell_overlay(db)
+    items = [CellLite(cell_id=c.cell_id, locality=localities.get(c.cell_id), street_name=streets.get(c.cell_id),
+                      incident_pending_count=pending.get(c.cell_id, 0), incident_confirmed_count=confirmed.get(c.cell_id, 0),
+                      lat=c.lat, lng=c.lng, n_past_crashes=c.n_past_crashes,
                       risk_score=c.risk_score, risk_vs_similar_history=c.risk_vs_similar_history,
                       confidence=c.confidence, emerging_risk=bool(c.emerging_risk),
                       top_overall=c.cell_id in top,
                       adjusted_risk_score=overlay_fields(c.risk_score, credits.get(c.cell_id, 0.0)),
+                      projected_risk_score=overlay_fields(c.risk_score, projections.get(c.cell_id, 0.0)),
                       has_measures=c.cell_id in briefs, measures=briefs.get(c.cell_id, [])) for c in rows]
     return CellList(total=total, count=len(items), limit=limit, offset=offset, items=items)
 
@@ -91,9 +134,13 @@ def cell_detail(cell_id: str, db: Session = Depends(get_db)):
                       .order_by(CellScenario.night, CellScenario.rain, CellScenario.low_vis)).all()
     is_top = cell_id in top_overall_ids(db)
     audit = bool(c.emerging_risk) or is_top
-    credits, briefs = cell_overlay(db, [cell_id])
+    credits, projections, briefs = cell_overlay(db, [cell_id])
+    streets, localities = _location_maps(db, [cell_id])
+    pending, confirmed = _incident_counts(db, [cell_id])
     return CellDetail(
-        cell_id=c.cell_id, lat=c.lat, lng=c.lng, n_past_crashes=c.n_past_crashes, risk_score=c.risk_score,
+        cell_id=c.cell_id, locality=localities.get(cell_id), street_name=streets.get(cell_id),
+        incident_pending_count=pending.get(cell_id, 0), incident_confirmed_count=confirmed.get(cell_id, 0),
+        lat=c.lat, lng=c.lng, n_past_crashes=c.n_past_crashes, risk_score=c.risk_score,
         risk_vs_similar_history=c.risk_vs_similar_history, history_percentile=c.history_percentile,
         headline=headline_text(c.risk_vs_similar_history), confidence=c.confidence,
         confidence_explanation=confidence_explanation(c.confidence, c.n_past_crashes),
@@ -108,4 +155,5 @@ def cell_detail(cell_id: str, db: Session = Depends(get_db)):
                                 probability=s.probability) for s in scen],
         google_maps_url=maps_url(c.lat, c.lng),
         adjusted_risk_score=overlay_fields(c.risk_score, credits.get(cell_id, 0.0)),
+        projected_risk_score=overlay_fields(c.risk_score, projections.get(cell_id, 0.0)),
         has_measures=cell_id in briefs, measures=briefs.get(cell_id, []))

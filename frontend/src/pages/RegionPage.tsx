@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { BarChart3, ClipboardCheck, MapPin, Sparkles } from 'lucide-react'
 import { SignIn } from '../components/AuthGate'
 import { AnalysisTab } from '../components/region/AnalysisTab'
 import { AssistantTab } from '../components/region/AssistantTab'
@@ -14,9 +15,9 @@ import { opsApi } from '../lib/opsApi'
 import type { RegionReport } from '../lib/types.ops'
 
 const TABS = [
-  { id: 'analysis', label: 'Analysis' },
-  { id: 'assistant', label: 'Assistant' },
-  { id: 'progress', label: 'Progress' },
+  { id: 'analysis', label: 'Analysis', Icon: BarChart3 },
+  { id: 'assistant', label: 'Assistant', Icon: Sparkles },
+  { id: 'progress', label: 'Progress', Icon: ClipboardCheck },
 ] as const
 type TabId = (typeof TABS)[number]['id']
 
@@ -89,25 +90,32 @@ export default function RegionPage() {
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-[#f4f1eb]">
-      <PageContainer className="flex flex-1 flex-col">
+      <PageContainer className="flex max-w-7xl flex-1 flex-col py-6 md:py-9">
         <nav aria-label="Breadcrumb" className="mb-4 text-sm">
-          <Link to="/map" className="font-semibold text-brass-700 underline-offset-2 hover:underline">
-            ← Back to the map
+          <Link to="/map" className="inline-flex items-center gap-2 rounded-full px-2 py-1 font-semibold text-brass-700 transition hover:bg-white/70 hover:underline">
+            <span aria-hidden="true">←</span> Back to the map
           </Link>
         </nav>
-        <header className="mb-7 rounded-2xl border border-navy/10 bg-white/55 px-5 py-5 shadow-card md:px-7 md:py-6">
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-brass-700">Region report</p>
+        <header className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-navy via-navy to-[#263b60] px-5 py-6 text-ivory shadow-lift md:px-8 md:py-8">
+          <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-20 h-64 w-64 rounded-full border border-white/10 bg-white/[0.03]" />
+          <div className="relative flex items-start gap-4">
+            <span className="mt-1 grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10 text-brass-soft"><MapPin aria-hidden="true" className="h-5 w-5" /></span>
+            <div className="min-w-0 flex-1">
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-brass-soft">Region workspace</p>
           {regionQ.loading && <SkeletonBlock lines={2} />}
           {regionQ.error && <ErrorBanner message={regionQ.error} onRetry={regionQ.reload} />}
           {region && (
             <>
               <h1 className="font-serif text-3xl font-bold leading-tight tracking-[-0.02em] md:text-4xl">{region.name}</h1>
-              <p className="mt-2 text-sm text-navy/70 md:text-base">
-                {region.cell_count.toLocaleString('en-US')} scored cells <span className="mx-1.5 text-brass">·</span> {region.kind}{' '}
-                <span className="mx-1.5 text-brass">·</span> <span className="font-mono text-[0.9em]">{region.key}</span>
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ivory/70 md:text-base">
+                <span className="font-semibold text-ivory">{region.cell_count.toLocaleString('en-US')} scored cells</span>
+                <span aria-hidden="true" className="text-brass">·</span> {region.kind}
+                <span aria-hidden="true" className="text-brass">·</span> <span className="break-all font-mono text-xs">{region.key}</span>
               </p>
             </>
           )}
+            </div>
+          </div>
         </header>
 
         {!user ? (
@@ -118,7 +126,7 @@ export default function RegionPage() {
             role="tablist"
             aria-label="Region sections"
             onKeyDown={onKeyDown}
-            className="mb-5 flex gap-1 overflow-x-auto border-b border-navy/15"
+            className="mb-6 flex w-full gap-1 overflow-x-auto rounded-2xl border border-navy/10 bg-white/70 p-1.5 shadow-sm sm:w-fit"
           >
             {TABS.map((t) => {
               const selected = t.id === tab
@@ -135,10 +143,11 @@ export default function RegionPage() {
                   aria-controls={`panel-${t.id}`}
                   tabIndex={selected ? 0 : -1}
                   onClick={() => goTab(t.id)}
-                  className={`whitespace-nowrap rounded-t-lg border-b-4 px-4 py-2.5 text-lg font-semibold ${
-                    selected ? 'border-brass bg-white text-navy' : 'border-transparent text-navy/70 hover:bg-white/60'
+                  className={`inline-flex min-w-[7.5rem] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition sm:flex-none sm:text-base ${
+                    selected ? 'bg-navy text-ivory shadow-sm' : 'text-navy/65 hover:bg-ivory hover:text-navy'
                   }`}
                 >
+                  <t.Icon aria-hidden="true" className="h-4 w-4" />
                   {t.label}
                 </button>
               )

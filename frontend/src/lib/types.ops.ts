@@ -4,7 +4,7 @@
 export type RoleId = 'planner' | 'engineer' | 'community'
 
 export const ROLE_LABELS: Record<RoleId, string> = {
-  planner: 'City Planner',
+  planner: 'City Planners',
   engineer: 'Road Authorities',
   community: 'Traffic Police',
 }
@@ -19,6 +19,15 @@ export interface TokenOut {
   access_token: string
   token_type: string
   user: UserOut
+}
+
+export interface ProfileUpdateIn {
+  name: string
+}
+
+export interface ChangePasswordIn {
+  current_password: string
+  new_password: string
 }
 
 // ---- configuration
@@ -152,6 +161,8 @@ export interface MeasurePatch {
   owner_role?: RoleId
   status?: MeasureStatus
   note?: string
+  due_at?: string | null
+  progress_note?: string | null
 }
 
 export interface VerifyRequest {
@@ -200,6 +211,8 @@ export interface Measure {
   created_by: string
   created_at: string
   updated_at: string
+  due_at?: string | null
+  progress_note?: string | null
   cell_ids: string[]
   evidence_count: number
   evidence_required: EvidenceKind[]
@@ -227,6 +240,7 @@ export interface Progress {
   verified_pct: number
   base_index: number | null
   adjusted_index: number | null
+  projected_index: number | null
   credit_cap: number
   placeholder_weights: boolean
   snapshots: RiskSnapshot[]

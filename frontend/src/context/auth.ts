@@ -10,6 +10,7 @@ export interface AuthState {
   login: (username: string, password: string) => Promise<boolean>
   signup: (name: string, email: string, password: string, role: RoleId) => Promise<boolean>
   demoLogin: (role: RoleId) => Promise<boolean>
+  updateUser: (user: UserOut) => void
   logout: () => void
 }
 

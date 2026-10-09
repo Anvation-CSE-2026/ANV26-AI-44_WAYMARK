@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
-from sqlalchemy import MetaData, Table, create_engine, func, inspect, select, text
+from sqlalchemy import Integer, MetaData, Table, create_engine, func, inspect, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -23,7 +23,7 @@ from backend.db import IS_SQLITE, engine as target_engine, validate_postgres_sch
 from backend.models import Base  # noqa: E402
 from backend.storage import ensure_private_bucket, put_object  # noqa: E402
 
-BATCH_SIZE = 250
+BATCH_SIZE = 5_000
 SUPABASE_FREE_DB_LIMIT = 500 * 1024 * 1024
 
 
@@ -123,7 +123,7 @@ def _reset_sequences(connection, target_tables: list[Table]) -> None:
     preparer = connection.dialect.identifier_preparer
     for table in target_tables:
         for column in table.primary_key.columns:
-            if column.name != "id" or not column.autoincrement:
+            if column.name != "id" or not column.autoincrement or not isinstance(column.type, Integer):
                 continue
             q_table, q_column = preparer.quote(table.name), preparer.quote(column.name)
             qualified = f"public.{table.name}"
@@ -181,7 +181,10 @@ def main() -> int:
 
         ensure_private_bucket()
         for item in objects:
-            put_object(item.key, item.path.read_bytes(), item.content_type)
+            try:
+                put_object(item.key, item.path.read_bytes(), item.content_type)
+            except Exception as exc:
+                raise RuntimeError(f"Failed uploading {item.key}: {exc}") from None
         with target_engine.begin() as target_connection, source.connect() as source_connection:
             copied = _copy_rows(source_connection, target_connection, source_tables, target_tables)
             _reset_sequences(target_connection, target_tables)

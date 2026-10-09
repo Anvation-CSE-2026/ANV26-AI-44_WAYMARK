@@ -166,6 +166,16 @@ html.lenis body { height: auto; }
 
 .sr-table-wrap {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  html { font-size: 16px; }
+  body { overflow-x: clip; }
+  input, select, textarea { font-size: 16px; }
+  button, a { touch-action: manipulation; }
+  .landing-page section { scroll-margin-top: 4rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

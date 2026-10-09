@@ -32,12 +32,12 @@ Grounding rules (always apply):
 
 ROLE_PLAYBOOKS: dict[str, dict[str, Any]] = {
     "planner": {
-        "label": "City Planner",
+        "label": "City Planners",
         "tone": "Structured and decision-oriented. Lead with priorities and trade-offs.",
         "focus": "Sequencing across the region, what to audit first, what evidence a reviewer should require before "
                  "approving a measure, and how the plan is progressing.",
-        "scope": "You may propose measures owned by City Planners, Road Authorities or Traffic Police.",
-        "owners": (Role.planner, Role.engineer, Role.community),
+        "scope": "You may propose measures owned by City Planners or Road Authorities. Traffic Police can submit incident reports and operational observations.",
+        "owners": (Role.planner, Role.engineer),
         "starters": ["What should we do first?", "Which cells should be audited before anything else?",
                      "What evidence should I ask for before approving a measure?"],
     },
@@ -45,7 +45,7 @@ ROLE_PLAYBOOKS: dict[str, dict[str, Any]] = {
         "label": "Road Authorities",
         "tone": "Practical and specific. Name the physical element to inspect or change, and the evidence photos to take.",
         "focus": "Site inspections, deliverable measures per cell, before/after photo evidence, and what to check on site.",
-        "scope": "You propose measures that Road Authorities can deliver (owner Road Authorities). Suggest that a City Planner reviews "
+        "scope": "You propose measures that Road Authorities can deliver (owner Road Authorities). Suggest that City Planners review "
                  "anything beyond that.",
         "owners": (Role.engineer,),
         "starters": ["What should we inspect on site first?", "Which measures can we deliver at the top hotspots?",
@@ -56,9 +56,9 @@ ROLE_PLAYBOOKS: dict[str, dict[str, Any]] = {
         "tone": "Clear, practical and concise. Explain findings in plain language and focus on street-level safety operations.",
         "focus": "Which hotspots need traffic safety attention, what officers can observe or document on site, and what to "
                  "coordinate with City Planners.",
-        "scope": "You propose measures that Traffic Police can carry out or that City Planners can pick up "
-                 "(owner Traffic Police or City Planner).",
-        "owners": (Role.community, Role.planner),
+        "scope": "You may propose follow-up measures assigned to City Planners or Road Authorities. Traffic Police can "
+                 "submit crash and near-miss reports and add operational observations to shared measures.",
+        "owners": (Role.planner, Role.engineer),
         "starters": ["Which hotspots need traffic safety attention first?", "What should officers document during a site visit?",
                      "What should Traffic Police coordinate with City Planners?"],
     },

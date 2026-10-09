@@ -12,6 +12,8 @@ const AuditListPage = lazy(() => import('./pages/AuditListPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 const RegionPage = lazy(() => import('./pages/RegionPage'))
 const AuthPage = lazy(() => import('./pages/AuthPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const IncidentReportsPage = lazy(() => import('./pages/IncidentReportsPage'))
 const LandingPage = lazy(() => import('./landing/LandingPage'))
 
 function AppContent() {
@@ -44,6 +46,8 @@ function AppContent() {
             <Route path="/audit-list" element={<AuditListPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/incident-reports" element={<IncidentReportsPage />} />
             <Route path="/region/:regionId" element={<RegionPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

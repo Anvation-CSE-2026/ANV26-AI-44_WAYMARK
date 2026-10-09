@@ -4,7 +4,7 @@ from types import SimpleNamespace as M
 import pytest
 
 from backend.risk_overlay import (adjusted_region_index, adjusted_score, combined_credit, implementation_pct,
-                                  stage_factor, verified_pct)
+                                  projected_credit, stage_factor, verified_pct)
 
 CAP = 0.6                                     # effects.json credit_cap
 
@@ -43,6 +43,20 @@ def test_cancelled_and_deleted_are_excluded_from_both_percentages():
 def test_credit_only_from_verified_measures():
     assert combined_credit([m("planned", 0.5), m("in_progress", 0.5), m("evidence_submitted", 0.5)]) == 0.0
     assert combined_credit([m("evidence_submitted", 0.5), m("verified", 0.1)]) == pytest.approx(0.1)
+
+
+def test_projected_credit_tracks_configured_measure_stages():
+    assert projected_credit([m("planned", 0.5)]) == 0.0
+    assert projected_credit([m("in_progress", 0.4)]) == pytest.approx(0.1)
+    assert projected_credit([m("evidence_submitted", 0.4)]) == pytest.approx(0.3)
+    assert projected_credit([m("verified", 0.4)]) == pytest.approx(0.4)
+
+
+def test_projected_credit_combines_multiplicatively_and_respects_cap():
+    assert projected_credit([m("in_progress", 0.4), m("evidence_submitted", 0.4)]) == pytest.approx(1 - .9 * .7)
+    assert projected_credit([m("verified", 0.5), m("verified", 0.5)]) == pytest.approx(CAP)
+    assert projected_credit([m("cancelled", 0.5), m("verified", 0.1)]) == pytest.approx(0.1)
+    assert projected_credit([m("verified", 0.0)]) == 0.0
 
 
 def test_credit_is_multiplicative_not_additive():

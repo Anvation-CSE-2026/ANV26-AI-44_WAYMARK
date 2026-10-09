@@ -5,6 +5,7 @@ strings in UTC with a trailing "Z". Changing a field here means updating that fi
 """
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
 from typing import Annotated, Literal, Optional, Union
 
@@ -38,6 +39,19 @@ class UserOut(BaseModel):
     id: str
     name: str
     role: Role
+
+
+class ProfileUpdateIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=6, max_length=256)
+
+
+class PasswordChangedOut(BaseModel):
+    message: str
 
 
 class TokenOut(BaseModel):
@@ -193,6 +207,8 @@ class MeasurePatch(BaseModel):
     owner_role: Optional[Role] = None
     status: Optional[MeasureStatus] = None
     note: Optional[str] = Field(default=None, max_length=2000)
+    due_at: Optional[datetime] = None
+    progress_note: Optional[str] = Field(default=None, max_length=2000)
 
 
 class CommentCreate(BaseModel):
@@ -248,6 +264,8 @@ class Measure(BaseModel):
     created_by: str
     created_at: str
     updated_at: str
+    due_at: Optional[str] = None
+    progress_note: Optional[str] = None
     cell_ids: list[str]
     evidence_count: int = 0
     evidence_required: list[str] = []
@@ -280,6 +298,7 @@ class Progress(BaseModel):
     adjusted_index: Optional[float]
     credit_cap: float
     placeholder_weights: bool
+    projected_index: Optional[float] = None
     snapshots: list[RiskSnapshotOut]
     note: str = ESTIMATE_NOTE
 

@@ -13,12 +13,15 @@ PERMISSIONS: dict[str, frozenset[Role]] = {
     "report.create": frozenset({P, E, C}),
     "report.read": frozenset({P, E, C}),
     "chat.use": frozenset({P, E, C}),
-    "measure.create": frozenset({P, E, C}),          # community measures always start as `planned`
+    "measure.create": frozenset({P, E}),
     "measure.transition": frozenset({P, E}),         # every non-verify status change
     "measure.comment": frozenset({P, E, C}),
     "evidence.upload": frozenset({P, E, C}),
     "evidence.read": frozenset({P, E, C}),
     "measure.verify": frozenset({P}),                # approve or reject
+    "incident.read": frozenset({P, E, C}),
+    "incident.create": frozenset({C}),
+    "incident.review": frozenset({P}),
 }
 
 

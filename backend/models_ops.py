@@ -51,6 +51,8 @@ class Measure(Base):
     created_by: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    progress_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     __table_args__ = (Index("ix_measures_region", "region_kind", "region_key"),)
 
 
@@ -128,6 +130,26 @@ class RiskSnapshot(Base):
     __table_args__ = (Index("ix_risk_snapshots_region", "region_kind", "region_key", "created_at"),)
 
 
+class IncidentReport(Base):
+    """New field reports are operational signals, separate from the historical crash/model data."""
+    __tablename__ = "incident_reports"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    kind: Mapped[str] = mapped_column(String)  # crash / near_miss
+    cell_id: Mapped[str] = mapped_column(ForeignKey("cells.cell_id"), index=True)
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime)
+    severity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pending", index=True)  # pending / confirmed / rejected
+    reported_by: Mapped[str] = mapped_column(String, index=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    review_note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+    __table_args__ = (Index("ix_incident_reports_cell_status", "cell_id", "status"),)
+
+
 class Account(Base):
     """Self-service WAYMARK account with its selected workspace role."""
     __tablename__ = "accounts"
@@ -135,17 +157,27 @@ class Account(Base):
     name: Mapped[str] = mapped_column(String)
     password_hash: Mapped[str] = mapped_column(String)
     role: Mapped[str] = mapped_column(String, default="community", server_default="community", nullable=False)
+    session_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
 
 OPS_TABLES = [Report.__table__, Measure.__table__, MeasureCell.__table__, Evidence.__table__,
               MeasureEvent.__table__, ChatSession.__table__, ChatMessage.__table__, RiskSnapshot.__table__,
-              Account.__table__]
+              Account.__table__, IncidentReport.__table__]
 
 
 def create_ops_tables(engine: Engine) -> None:
-    """Create missing operations tables and add the account role column for existing installs."""
+    """Create missing operations tables and add account columns for existing installs."""
     Base.metadata.create_all(engine, tables=OPS_TABLES, checkfirst=True)
     account_columns = {column["name"] for column in inspect(engine).get_columns("accounts")}
     if "role" not in account_columns:
         with engine.begin() as connection:
             connection.exec_driver_sql("ALTER TABLE accounts ADD COLUMN role VARCHAR NOT NULL DEFAULT 'community'")
+    if "session_version" not in account_columns:
+        with engine.begin() as connection:
+            connection.exec_driver_sql("ALTER TABLE accounts ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0")
+    measure_columns = {column["name"] for column in inspect(engine).get_columns("measures")}
+    with engine.begin() as connection:
+        if "due_at" not in measure_columns:
+            connection.exec_driver_sql("ALTER TABLE measures ADD COLUMN due_at TIMESTAMP NULL")
+        if "progress_note" not in measure_columns:
+            connection.exec_driver_sql("ALTER TABLE measures ADD COLUMN progress_note TEXT NULL")

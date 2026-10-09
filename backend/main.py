@@ -18,7 +18,7 @@ from .db import DB_PATH, IS_SQLITE, configure_sqlite, engine, validate_postgres_
 from .localities import ensure_locality_indexes
 from .models_ops import create_ops_tables
 from .storage import validate_storage_configuration
-from .routes import (audit, auth, cells, chat, crashes, evidence, measures, places, regions, reports, system,
+from .routes import (audit, auth, cells, chat, crashes, evidence, incidents, measures, places, regions, reports, system,
                      validation, whatif)
 
 log = logging.getLogger("waymark")
@@ -48,7 +48,7 @@ app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
                    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
                    allow_headers=["Authorization", "Content-Type"])
 
-for r in (system.router, cells.router, crashes.router, places.router, whatif.router, validation.router, audit.router,
+for r in (system.router, cells.router, crashes.router, incidents.router, places.router, whatif.router, validation.router, audit.router,
           auth.router, regions.router, reports.router, measures.router, evidence.router, chat.router):
     app.include_router(r)
 

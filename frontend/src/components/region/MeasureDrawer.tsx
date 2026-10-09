@@ -75,6 +75,8 @@ export function MeasureDrawer({
   const [busy, setBusy] = useState(false)
   const [reason, setReason] = useState('')
   const [comment, setComment] = useState('')
+  const [dueAt, setDueAt] = useState('')
+  const [progressNote, setProgressNote] = useState('')
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(true) // stays open once opened, so upload progress is not hidden
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -120,6 +122,11 @@ export function MeasureDrawer({
   const missing = required.filter((k) => !have.has(k))
   const suggest: EvidenceKind = missing[0] ?? (have.has('after') ? 'during' : 'after')
   const open = m && m.status !== 'verified' && m.status !== 'cancelled'
+  const canUpdatePlan = !!m && (role === 'planner' || (role === 'engineer' && m.owner_role === 'engineer'))
+  useEffect(() => {
+    setDueAt(m?.due_at ? new Date(m.due_at).toISOString().slice(0, 16) : '')
+    setProgressNote(m?.progress_note ?? '')
+  }, [m?.id, m?.due_at, m?.progress_note])
 
   const sendComment = async (e: FormEvent) => {
     e.preventDefault()
@@ -169,6 +176,16 @@ export function MeasureDrawer({
                 <span className="text-sm text-navy/70">· weight {m.effect_weight} {fx?.placeholder_weights ? '(placeholder)' : ''}</span>
               </div>
               {m.description && <p className="text-navy/85">{m.description}</p>}
+              <div className="rounded-xl border border-navy/10 bg-white p-3">
+                <p className="font-semibold">Implementation update</p>
+                <p className="mt-1 text-sm text-navy/65">{m.due_at ? `Target date: ${fmtDate(m.due_at)}` : 'No target date set.'}</p>
+                {m.progress_note && <p className="mt-2 whitespace-pre-wrap text-sm text-navy/80">{m.progress_note}</p>}
+                {canUpdatePlan && open && <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm font-semibold">Target date<input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-navy/25 px-3 font-normal" /></label>
+                  <label className="text-sm font-semibold sm:col-span-2">Progress update<textarea value={progressNote} onChange={(e) => setProgressNote(e.target.value)} maxLength={2000} rows={3} className="mt-1 w-full rounded-lg border border-navy/25 px-3 py-2 font-normal" placeholder="What was completed or what is blocked?" /></label>
+                  <button type="button" disabled={busy} onClick={() => void act(() => opsApi.patchMeasure(m.id, { due_at: dueAt ? new Date(dueAt).toISOString() : null, progress_note: progressNote.trim() || null }))} className="min-h-11 rounded-lg bg-navy px-4 font-semibold text-ivory disabled:opacity-50 sm:col-span-2">Save implementation update</button>
+                </div>}
+              </div>
               <p className="text-sm text-navy/70">
                 Cells:{' '}
                 {m.cell_ids.map((c, i) => (
@@ -230,7 +247,7 @@ export function MeasureDrawer({
                 )}
                 {m.status === 'verified' && <p className="rounded-lg bg-teal/10 px-3 py-2 font-semibold text-teal">✓ Verified. This measure now counts toward the adjusted risk estimate.</p>}
 
-                {open && (role === 'planner' || role === 'engineer') && (
+                {open && canUpdatePlan && (
                   confirmCancel ? (
                     <span className="inline-flex items-center gap-2">
                       <button type="button" disabled={busy} onClick={() => void act(() => opsApi.cancelMeasure(m.id)).then(() => setConfirmCancel(false))} className="rounded-lg bg-brick px-3 py-1.5 text-sm font-semibold text-white">Yes, cancel this measure</button>
@@ -251,7 +268,7 @@ export function MeasureDrawer({
                   </p>
                 )}
                 <EvidenceGallery evidence={m.evidence} />
-                {open ? (
+                {open && (role === 'planner' || (role === 'engineer' && m.owner_role === 'engineer')) ? (
                   <details open={uploadOpen} onToggle={(e) => setUploadOpen(e.currentTarget.open)} className="rounded-[12px] border border-navy/15 bg-white p-3">
                     <summary className="cursor-pointer font-semibold">Add photos</summary>
                     <div className="mt-3">
@@ -259,7 +276,7 @@ export function MeasureDrawer({
                     </div>
                   </details>
                 ) : (
-                  <p className="text-sm text-navy/65">This measure is {m.status}, so it no longer accepts photos.</p>
+                  <p className="text-sm text-navy/65">{open ? `Only the assigned ${ROLE_LABELS[m.owner_role]} can add implementation evidence.` : `This measure is ${m.status}, so it no longer accepts photos.`}</p>
                 )}
               </section>
 
@@ -282,7 +299,7 @@ export function MeasureDrawer({
                 </ol>
                 <form onSubmit={sendComment} className="flex flex-wrap items-end gap-2">
                   <label className="min-w-0 flex-1 text-sm font-semibold">
-                    Add a comment
+                    {role === 'community' ? 'Add an operational observation' : 'Add a comment'}
                     <input value={comment} onChange={(e) => setComment(e.target.value)} maxLength={2000} className="mt-1 w-full rounded-lg border border-navy/25 px-3 py-2 font-normal" />
                   </label>
                   <button type="submit" disabled={busy || !comment.trim()} className="rounded-lg bg-navy px-4 py-2 font-semibold text-ivory hover:bg-navy-800 disabled:opacity-50">Post</button>

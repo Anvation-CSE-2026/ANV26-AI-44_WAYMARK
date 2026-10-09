@@ -4,6 +4,7 @@ import { cellToParent, getResolution, isValidCell } from 'h3-js'
 import { ApiError } from '../../lib/api'
 import { opsApi } from '../../lib/opsApi'
 import type { EffectsOut, Region } from '../../lib/types.ops'
+import { useAuth } from '../../context/auth'
 import { Card } from '../ui'
 
 interface CellOpt {
@@ -25,6 +26,7 @@ export function AddMeasureForm({
   onCreated: (title: string) => void
   onCancel: () => void
 }) {
+  const { user } = useAuth()
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
   const [description, setDescription] = useState('')
@@ -80,6 +82,7 @@ export function AddMeasureForm({
         category,
         cell_ids: [...picked],
         description: description.trim() || null,
+        owner_role: user?.role === 'engineer' ? 'engineer' : undefined,
         source: 'manual',
       })
       onCreated(title.trim())

@@ -11,7 +11,7 @@
     { "id": "speed_management", "label": "Speed management and traffic calming", "weight": 0.1, "default_owner": "planner", "evidence_required": ["before", "after"], "placeholder": true },
     { "id": "drainage_surface", "label": "Drainage and road-surface condition", "weight": 0.08, "default_owner": "engineer", "evidence_required": ["before", "after"], "placeholder": true },
     { "id": "visibility_markings", "label": "Low-visibility warnings and road markings", "weight": 0.06, "default_owner": "engineer", "evidence_required": ["before", "after"], "placeholder": true },
-    { "id": "community_awareness", "label": "Community awareness and local reporting", "weight": 0.03, "default_owner": "community", "evidence_required": ["after"], "placeholder": true },
+    { "id": "community_awareness", "label": "Community awareness and local reporting", "weight": 0.03, "default_owner": "planner", "evidence_required": ["after"], "placeholder": true },
     { "id": "site_safety_audit", "label": "Detailed site safety audit", "weight": 0, "default_owner": "planner", "evidence_required": ["after"], "placeholder": true }
   ]
 }

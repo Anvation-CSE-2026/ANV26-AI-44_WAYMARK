@@ -308,6 +308,10 @@ export type Confidence = 'High' | 'Medium' | 'Low'
 
 export interface CellLite {
   cell_id: string
+  locality?: string | null
+  street_name?: string | null
+  incident_pending_count?: number
+  incident_confirmed_count?: number
   lat: number
   lng: number
   n_past_crashes: number
@@ -320,6 +324,8 @@ export interface CellLite {
   top_factors: string[]
   /** Overlay estimate (equals risk_score until a measure is verified). */
   adjusted_risk_score: number | null
+  /** Stage-weighted implementation projection, separate from verified adjusted risk. */
+  projected_risk_score: number | null
   has_measures: boolean
   measures: CellMeasureBrief[]
 }
@@ -409,6 +415,10 @@ function toCellLite(r: Rec): CellLite | null {
   if (!id || lat === null || lng === null) return null
   return {
     cell_id: id,
+    locality: r.locality == null ? null : str(r.locality),
+    street_name: r.street_name == null ? null : str(r.street_name),
+    incident_pending_count: num(r.incident_pending_count) ?? 0,
+    incident_confirmed_count: num(r.incident_confirmed_count) ?? 0,
     lat,
     lng,
     n_past_crashes: num(pick(r, ['n_past_crashes', 'past_crashes'])) ?? 0,
@@ -419,6 +429,7 @@ function toCellLite(r: Rec): CellLite | null {
     emerging_risk: bool(r.emerging_risk),
     top_factors: toList(r.top_factors, true),
     adjusted_risk_score: num(r.adjusted_risk_score),
+    projected_risk_score: num(r.projected_risk_score) ?? num(r.adjusted_risk_score) ?? num(pick(r, ['risk_score', 'score'])) ?? 0,
     has_measures: bool(r.has_measures),
     measures: unwrapList(r.measures ?? [], ['items']).map((m) => ({
       id: num(m.id) ?? 0,
@@ -617,6 +628,22 @@ export interface CrashResult {
   items: CrashPoint[]
 }
 
+export type IncidentKind = 'crash' | 'near_miss'
+export type IncidentStatus = 'pending' | 'confirmed' | 'rejected'
+export interface IncidentReport {
+  id: number
+  kind: IncidentKind
+  cell_id: string
+  lat: number
+  lng: number
+  occurred_at: string
+  severity: number | null
+  note: string | null
+  status: IncidentStatus
+  review_note: string | null
+  created_at: string
+}
+
 export interface PlaceSearchItem {
   name: string
   kind: string
@@ -652,6 +679,18 @@ export const api = {
     return { available: r.available !== false, total: num(r.total) ?? items.length, truncated: bool(r.truncated), items }
   },
 
+  incidents: async (bbox: string, signal?: AbortSignal): Promise<IncidentReport[]> => {
+    const raw = await getJson('/api/incidents', { bbox, limit: 3000 }, signal)
+    return unwrapList(raw, ['items']).flatMap((o) => {
+      const lat = num(o.lat), lng = num(o.lng), id = num(o.id)
+      if (lat === null || lng === null || id === null) return []
+      return [{ id, kind: str(o.kind, 'crash') as IncidentKind, cell_id: str(o.cell_id), lat, lng,
+        occurred_at: str(o.occurred_at), severity: num(o.severity), note: o.note == null ? null : str(o.note),
+        status: str(o.status, 'pending') as IncidentStatus, review_note: o.review_note == null ? null : str(o.review_note),
+        created_at: str(o.created_at) }]
+    })
+  },
+
   health: (signal?: AbortSignal) => getJson('/api/health', undefined, signal),
 
   summary: async (signal?: AbortSignal) => toSummary(await getJson('/api/summary', undefined, signal)),
@@ -662,7 +701,7 @@ export const api = {
     let lastError: unknown = null
     for (const limit of [20000, 5000, undefined]) {
       try {
-        raw = await getJson('/api/cells', { limit }, signal)
+        raw = await getJson('/api/cells', { limit, include_locality: true }, signal)
         lastError = null
         break
       } catch (e) {

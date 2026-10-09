@@ -38,6 +38,8 @@ interface HexItem {
   n: number
   emerging: number
   crashes: number
+  incidentPending: number
+  incidentConfirmed: number
   /** Cells inside that have at least one action-plan measure (1 or 0 for a single cell). */
   measures: number
   cell: CellLite | null
@@ -71,7 +73,7 @@ interface HexLayerProps {
   tooltipFor: (c: CellLite) => string
   selectedId: string | null
   selected: [number, number] | null
-  onSelect: (id: string) => void
+  onSelect: (id: string, position?: [number, number]) => void
   onLevel?: (info: LevelInfo) => void
   /** Draw a dot at each cell centre (only used when real crash points are not loaded). */
   centerPoints?: boolean
@@ -82,7 +84,7 @@ interface HexLayerProps {
   /** Selected cell or region: these stay vivid, every other cell keeps its colour at lower opacity. */
   highlightIds?: ReadonlySet<string> | null
   /** Called when a grouped hexagon (a region) is clicked. */
-  onPickRegion?: (id: string, res: number) => void
+  onPickRegion?: (id: string, res: number, position?: [number, number]) => void
 }
 
 /**
@@ -137,16 +139,18 @@ export function HexLayer({
         n: 1,
         emerging: c.emerging_risk ? 1 : 0,
         crashes: c.n_past_crashes,
+        incidentPending: c.incident_pending_count ?? 0,
+        incidentConfirmed: c.incident_confirmed_count ?? 0,
         measures: c.has_measures ? 1 : 0,
         cell: c,
       }))
     }
-    const acc = new Map<string, { sum: number; k: number; n: number; emerging: number; crashes: number; measures: number }>()
+    const acc = new Map<string, { sum: number; k: number; n: number; emerging: number; crashes: number; incidentPending: number; incidentConfirmed: number; measures: number }>()
     for (const c of cells) {
       const parent = cellToParent(c.cell_id, res)
       let a = acc.get(parent)
       if (!a) {
-        a = { sum: 0, k: 0, n: 0, emerging: 0, crashes: 0, measures: 0 }
+        a = { sum: 0, k: 0, n: 0, emerging: 0, crashes: 0, incidentPending: 0, incidentConfirmed: 0, measures: 0 }
         acc.set(parent, a)
       }
       const v = valueFor(c)
@@ -156,13 +160,15 @@ export function HexLayer({
       }
       a.n++
       a.crashes += c.n_past_crashes
+      a.incidentPending += c.incident_pending_count ?? 0
+      a.incidentConfirmed += c.incident_confirmed_count ?? 0
       if (c.emerging_risk) a.emerging++
       if (c.has_measures) a.measures++
     }
     const out: HexItem[] = []
     for (const [id, a] of acc) {
       const [lat, lng] = cellToLatLng(id)
-      out.push({ id, lat, lng, value: a.k ? a.sum / a.k : null, n: a.n, emerging: a.emerging, crashes: a.crashes, measures: a.measures, cell: null })
+      out.push({ id, lat, lng, value: a.k ? a.sum / a.k : null, n: a.n, emerging: a.emerging, crashes: a.crashes, incidentPending: a.incidentPending, incidentConfirmed: a.incidentConfirmed, measures: a.measures, cell: null })
     }
     return out
   }, [cells, valueFor, grouped, res])
@@ -194,13 +200,13 @@ export function HexLayer({
         poly.bindTooltip(tooltipFor(c), { direction: 'top', sticky: true })
         poly.on('click', (e) => {
           L.DomEvent.stopPropagation(e)
-          onSelectRef.current(c.cell_id)
+          onSelectRef.current(c.cell_id, [e.latlng.lat, e.latlng.lng])
         })
       } else {
         poly.bindTooltip(
           `${it.n} cells · ${it.crashes.toLocaleString('en-US')} past crashes · ${it.emerging} emerging-risk cell${
             it.emerging === 1 ? '' : 's'
-          } (click to open this region)`,
+          }${it.incidentPending || it.incidentConfirmed ? ` · ${it.incidentConfirmed} confirmed and ${it.incidentPending} pending incident reports` : ''} (click to open this region)`,
           { direction: 'top', sticky: true },
         )
         poly.on('click', (e) => {
@@ -212,7 +218,7 @@ export function HexLayer({
             maxZoom: 17,
             duration: 0.9,
           })
-          onPickRegionRef.current?.(it.id, res)
+          onPickRegionRef.current?.(it.id, res, [e.latlng.lat, e.latlng.lng])
         })
       }
       group.addLayer(poly)
@@ -229,7 +235,7 @@ export function HexLayer({
         dot.bindTooltip(tooltipFor(c), { direction: 'top', sticky: true })
         dot.on('click', (e) => {
           L.DomEvent.stopPropagation(e)
-          onSelectRef.current(c.cell_id)
+          onSelectRef.current(c.cell_id, [e.latlng.lat, e.latlng.lng])
         })
         group.addLayer(dot)
       }
@@ -261,7 +267,7 @@ export function HexLayer({
         const c = it.cell
         marker.on('click', (e) => {
           L.DomEvent.stopPropagation(e)
-          onSelectRef.current(c.cell_id)
+          onSelectRef.current(c.cell_id, [e.latlng.lat, e.latlng.lng])
         })
       }
       group.addLayer(marker)

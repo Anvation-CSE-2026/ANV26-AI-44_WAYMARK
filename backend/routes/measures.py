@@ -46,6 +46,11 @@ def create_measure(body: MeasureCreate, db: Session = Depends(get_db),
     if cat is None:
         raise api_error(422, "unknown_category", f"'{body.category}' is not a known measure category.",
                         categories=sorted(get_effects().categories))
+    owner = body.owner_role or (Role.engineer if user.role is Role.engineer else Role(cat.default_owner))
+    if owner is Role.community:
+        raise api_error(422, "invalid_owner", "Measures must be assigned to City Planners or Road Authorities.")
+    if user.role is Role.engineer and owner is not Role.engineer:
+        raise api_error(403, "forbidden", "Road Authorities can create measures only for their own workspace.")
     region = resolve_region(db, body.region_kind, body.region_key)
     cell_ids = sorted(set(body.cell_ids))
     known = set(db.scalars(select(Cell.cell_id).where(Cell.cell_id.in_(cell_ids))))
@@ -60,7 +65,7 @@ def create_measure(body: MeasureCreate, db: Session = Depends(get_db),
 
     m = Measure(report_id=body.report_id, region_kind=region.region.kind, region_key=region.region.key,
                 title=body.title.strip(), category=body.category, description=(body.description or "").strip() or None,
-                owner_role=(body.owner_role or Role(cat.default_owner)).value, status="planned",
+                owner_role=owner.value, status="planned",
                 effect_weight_snapshot=cat.weight, source=body.source, created_by=user.id,
                 created_at=utcnow(), updated_at=utcnow())
     db.add(m)
@@ -85,19 +90,31 @@ def patch_measure(measure_id: int, body: MeasurePatch, db: Session = Depends(get
     m = get_measure(db, measure_id)
     fields = body.model_dump(exclude_unset=True)
     edits = {k: v for k, v in fields.items() if k in ("title", "description", "owner_role")}
-    if edits:
+    progress_fields = {k: v for k, v in fields.items() if k in ("due_at", "progress_note")}
+    if edits or progress_fields:
         if m.status in ("verified", "cancelled"):
             raise api_error(409, "locked", f"A {m.status} measure can no longer be edited.")
-        if not (can(user.role, "measure.transition") or m.created_by == user.id):
-            raise api_error(403, "forbidden", "Only the creator, a planner or an engineer can edit this measure.")
+        assigned_owner = m.owner_role == user.role.value
+        if not (user.role is Role.planner or (user.role is Role.engineer and assigned_owner)):
+            raise api_error(403, "forbidden", "Only a planner or the assigned Road Authority can update this measure.")
         if "title" in edits and edits["title"] is not None:
             m.title = edits["title"].strip()
         if "description" in edits:
             m.description = (edits["description"] or "").strip() or None
         if edits.get("owner_role") is not None:
+            if user.role is not Role.planner:
+                raise api_error(403, "forbidden", "Only City Planners can reassign a measure.")
+            if Role(edits["owner_role"]) is Role.community:
+                raise api_error(422, "invalid_owner", "Measures must be assigned to City Planners or Road Authorities.")
             m.owner_role = Role(edits["owner_role"]).value
+        if "due_at" in progress_fields:
+            value = progress_fields["due_at"]
+            m.due_at = value.replace(tzinfo=None) if value and value.tzinfo else value
+        if "progress_note" in progress_fields:
+            m.progress_note = (progress_fields["progress_note"] or "").strip() or None
         m.updated_at = utcnow()
-        add_event(db, m, "comment", user, note="Edited: " + ", ".join(sorted(edits)))
+        labels = sorted(set(edits) | set(progress_fields))
+        add_event(db, m, "comment", user, note="Updated: " + ", ".join(labels))
     status = fields.get("status")
     if status is not None:
         target = MeasureStatus(status).value
@@ -115,8 +132,8 @@ def cancel_measure(measure_id: int, db: Session = Depends(get_db),
     m = get_measure(db, measure_id)
     if m.status in ("verified", "cancelled"):
         raise api_error(409, "locked", f"A {m.status} measure cannot be cancelled.")
-    if not (can(user.role, "measure.transition") or (m.created_by == user.id and m.status == "planned")):
-        raise api_error(403, "forbidden", "Only a planner or engineer can cancel this measure.")
+    if not (user.role is Role.planner or (user.role is Role.engineer and m.owner_role == user.role.value)):
+        raise api_error(403, "forbidden", "Only a planner or the assigned Road Authority can cancel this measure.")
     prev = m.status
     m.status, m.updated_at = "cancelled", utcnow()
     add_event(db, m, "transition", user, from_status=prev, to_status="cancelled", note="Cancelled")

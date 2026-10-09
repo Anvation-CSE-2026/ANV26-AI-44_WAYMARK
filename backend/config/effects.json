@@ -55,7 +55,7 @@
     "community_awareness": {
       "label": "Community awareness and local reporting",
       "weight": 0.03,
-      "default_owner": "community",
+      "default_owner": "planner",
       "evidence_required": ["after"],
       "placeholder": true
     },

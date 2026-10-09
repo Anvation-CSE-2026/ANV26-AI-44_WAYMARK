@@ -65,11 +65,17 @@ def validate_postgres_schema() -> None:
     """Fail fast instead of serving requests against an uninitialized Supabase project."""
     required = {"cells", "cell_shap", "cell_scenarios", "yearly_counts", "data_quality", "metrics", "crashes",
                 "reports", "measures", "measure_cells", "evidence", "measure_events", "chat_sessions",
-                "chat_messages", "risk_snapshots", "accounts"}
+                "chat_messages", "risk_snapshots", "accounts", "incident_reports"}
     missing = required - set(inspect(engine).get_table_names())
     if missing:
         names = ", ".join(sorted(missing))
         raise RuntimeError(f"Supabase schema is incomplete; apply the checked-in migrations first. Missing: {names}")
+    account_columns = {column["name"] for column in inspect(engine).get_columns("accounts")}
+    if "session_version" not in account_columns:
+        raise RuntimeError("Supabase accounts schema is outdated; apply the latest checked-in migrations first.")
+    measure_columns = {column["name"] for column in inspect(engine).get_columns("measures")}
+    if not {"due_at", "progress_note"}.issubset(measure_columns):
+        raise RuntimeError("Supabase measures schema is outdated; apply the latest checked-in migrations first.")
 
 
 def get_db():

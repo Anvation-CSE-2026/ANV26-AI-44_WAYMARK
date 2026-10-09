@@ -3,6 +3,7 @@
 // closely enough to click through every screen offline. Numbers here are mock numbers, not real data.
 // Endpoints it does not know (the map's cells, places, ...) fall through to the real network.
 import { getAuthToken } from '../api'
+import type { IncidentReport } from '../api'
 import type {
   ChatEvent,
   EffectsOut,
@@ -54,6 +55,8 @@ let nextId = 100
 const measures = new Map<number, StoredMeasure>()
 const reports = new Map<string, { status: ReportStatus; madeAt: number }>()
 const snapshots: RiskSnapshot[] = []
+const incidentReports: IncidentReport[] = []
+const incidentReportOwners = new Map<number, string>()
 const sessions = new Map<string, { role: RoleId; report: RegionReport | null; user: string }>()
 let seeded = false
 
@@ -124,13 +127,17 @@ function numbers() {
   const n = baseReport.analysis.region.cell_count || 1
   const score = new Map(baseReport.analysis.hotspots.map((h) => [h.cell_id, h.base_score ?? 0]))
   const remaining = new Map<string, number>()
+  const projectedRemaining = new Map<string, number>()
   for (const m of active) {
-    if (m.status !== 'verified') continue
-    for (const c of m.cell_ids) remaining.set(c, (remaining.get(c) ?? 1) * (1 - m.effect_weight))
+    if (m.status === 'verified') {
+      for (const c of m.cell_ids) remaining.set(c, (remaining.get(c) ?? 1) * (1 - m.effect_weight))
+    }
+    for (const c of m.cell_ids) projectedRemaining.set(c, (projectedRemaining.get(c) ?? 1) * (1 - m.effect_weight * stage(m.status)))
   }
-  let drop = 0
+  let drop = 0, projectedDrop = 0
   for (const [c, r] of remaining) drop += (score.get(c) ?? base) * Math.min(1 - r, effects.credit_cap)
-  return { impl, ver, base, adjusted: base - drop / n, active }
+  for (const [c, r] of projectedRemaining) projectedDrop += (score.get(c) ?? base) * Math.min(1 - r, effects.credit_cap)
+  return { impl, ver, base, adjusted: base - drop / n, projected: base - projectedDrop / n, active }
 }
 
 function record(cause: number | null) {
@@ -171,6 +178,7 @@ function transition(m: StoredMeasure, to: MeasureStatus, u: { id: string; role: 
   } else if (to === 'evidence_submitted' && !auto && m.evidence.length === 0) {
     return err(409, 'Upload at least one photo before submitting evidence.', 'evidence_required')
   }
+  if (u.role !== 'planner' && m.owner_role !== u.role) return err(403, 'Only the assigned workspace can update this measure.', 'wrong_measure_owner')
   const from = m.status
   m.status = to
   ev(m, type, u, { from_status: from, to_status: to, note: note ?? null })
@@ -209,6 +217,34 @@ export async function mockRequest(method: string, path: string, req: MockReq): P
     return ok({ access_token: `mock.${payload}.sig`, token_type: 'bearer', user: { id: b === 'demo' ? `demo-${role}` : role, name: `Mock ${role}`, role } })
   }
   if (a === 'effects') return ok(effects)
+  if (a === 'incidents') {
+    if (b === undefined && method === 'GET') {
+      const items = incidentReports.filter((r) => u.role === 'planner' || r.status === 'confirmed' || (u.role === 'community' && incidentReportOwners.get(r.id) === u.id))
+      return ok({ count: items.length, items })
+    }
+    if (b === undefined && method === 'POST') {
+      if (u.role !== 'community') return err(403, 'Only Traffic Police can submit incident reports.', 'forbidden')
+      const body = req.json as { kind: 'crash' | 'near_miss'; lat: number; lng: number; occurred_at: string; severity?: number; note?: string }
+      const row: IncidentReport = { id: ++nextId, kind: body.kind, cell_id: baseReport.analysis.hotspots[0]?.cell_id ?? '', lat: body.lat, lng: body.lng,
+        occurred_at: body.occurred_at, severity: body.kind === 'crash' ? body.severity ?? null : null, note: body.note ?? null,
+        status: 'pending', review_note: null, created_at: nowIso() }
+      incidentReports.unshift(row)
+      incidentReportOwners.set(row.id, u.id)
+      return ok(row, 201)
+    }
+    if (b && c === 'review' && method === 'POST') {
+      if (u.role !== 'planner') return err(403, 'Only City Planners can review incident reports.', 'forbidden')
+      const row = incidentReports.find((r) => r.id === Number(b))
+      if (!row) return err(404, 'Incident report not found.')
+      if (incidentReportOwners.get(row.id) === u.id) return err(403, 'You cannot review your own incident report.')
+      if (row.status !== 'pending') return err(409, 'Only pending incident reports can be reviewed.')
+      const body = req.json as { decision: 'confirm' | 'reject'; note?: string }
+      if (body.decision === 'reject' && !body.note?.trim()) return err(422, 'Add a reason when rejecting a report.')
+      row.status = body.decision === 'confirm' ? 'confirmed' : 'rejected'
+      row.review_note = body.note ?? null
+      return ok(row)
+    }
+  }
   if (a === 'regions' && b === 'resolve') {
     const r = baseReport.analysis.region
     return ok(String(req.params?.key) === r.key ? r : { ...r, kind: String(req.params?.kind), key: String(req.params?.key), name: `Mock region ${String(req.params?.key)}` })
@@ -219,6 +255,7 @@ export async function mockRequest(method: string, path: string, req: MockReq): P
     const prog: Progress = {
       region: baseReport.analysis.region, measures: list as Measure[], implementation_pct: +n.impl.toFixed(1), verified_pct: +n.ver.toFixed(1),
       base_index: +n.base.toFixed(2), adjusted_index: +n.adjusted.toFixed(2), credit_cap: effects.credit_cap, placeholder_weights: true,
+      projected_index: +n.projected.toFixed(2),
       snapshots: snapshots.slice(-100), note: effects.note,
     }
     return ok(prog)
@@ -247,15 +284,20 @@ export async function mockRequest(method: string, path: string, req: MockReq): P
 
   if (a === 'measures') {
     if (!b && method === 'POST') {
+      if (u.role === 'community') return err(403, 'Your role cannot create measures.', 'forbidden')
       const body = req.json as { title: string; category: string; cell_ids: string[]; owner_role?: RoleId; description?: string; source?: 'chat' | 'manual' }
       if (!category(body.category)) return err(422, `'${body.category}' is not a known measure category.`, 'unknown_category')
-      const m = make({ title: body.title, category: body.category, cell_ids: body.cell_ids, owner_role: body.owner_role ?? category(body.category)!.default_owner, description: body.description ?? null, source: body.source ?? 'manual' }, u)
+      const owner = body.owner_role ?? (u.role === 'engineer' ? 'engineer' : category(body.category)!.default_owner)
+      if (owner === 'community') return err(422, 'Measures must be assigned to City Planners or Road Authorities.', 'invalid_owner')
+      if (u.role === 'engineer' && owner !== 'engineer') return err(403, 'Road Authorities can create measures only for their own workspace.', 'forbidden')
+      const m = make({ title: body.title, category: body.category, cell_ids: body.cell_ids, owner_role: owner, description: body.description ?? null, source: body.source ?? 'manual' }, u)
       record(m.id)
       return ok(detail(m, u.role), 201)
     }
     const m = measures.get(Number(b))
     if (!m) return err(404, 'Measure not found.')
     if (c === 'evidence' && method === 'POST') {
+      if (u.role !== 'planner' && !(u.role === 'engineer' && m.owner_role === 'engineer')) return err(403, 'Only the assigned workspace can upload measure evidence.', 'wrong_measure_owner')
       if (m.status === 'verified' || m.status === 'cancelled') return err(409, `A ${m.status} measure does not accept new evidence.`, 'locked')
       const file = req.form?.get('file')
       const kind = String(req.form?.get('kind')) as EvidenceKind
@@ -274,8 +316,15 @@ export async function mockRequest(method: string, path: string, req: MockReq): P
       return e ?? ok(detail(m, u.role))
     }
     if (method === 'PATCH') {
-      const body = req.json as { title?: string; status?: MeasureStatus; note?: string }
+      const body = req.json as { title?: string; status?: MeasureStatus; note?: string; owner_role?: RoleId; due_at?: string | null; progress_note?: string | null }
+      const planEdit = body.title !== undefined || body.owner_role !== undefined || body.due_at !== undefined || body.progress_note !== undefined
+      if (planEdit && !(u.role === 'planner' || (u.role === 'engineer' && m.owner_role === 'engineer'))) return err(403, 'Only the assigned workspace can update this measure.', 'wrong_measure_owner')
+      if (body.owner_role !== undefined && u.role !== 'planner') return err(403, 'Only City Planners can reassign a measure.', 'forbidden')
+      if (body.owner_role === 'community') return err(422, 'Measures must be assigned to City Planners or Road Authorities.', 'invalid_owner')
       if (body.title) m.title = body.title
+      if (body.owner_role) m.owner_role = body.owner_role
+      if (body.due_at !== undefined) m.due_at = body.due_at
+      if (body.progress_note !== undefined) m.progress_note = body.progress_note
       if (body.status) {
         const e = transition(m, body.status, u, body.note)
         if (e) return e
@@ -283,6 +332,7 @@ export async function mockRequest(method: string, path: string, req: MockReq): P
       return ok(detail(m, u.role))
     }
     if (method === 'DELETE') {
+      if (!(u.role === 'planner' || (u.role === 'engineer' && m.owner_role === 'engineer'))) return err(403, 'Only a planner or the assigned Road Authority can cancel this measure.', 'forbidden')
       if (m.status === 'verified' || m.status === 'cancelled') return err(409, `A ${m.status} measure cannot be cancelled.`, 'locked')
       const from = m.status
       m.status = 'cancelled'

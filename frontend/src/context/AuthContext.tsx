@@ -61,6 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const updateUser = useCallback((user: UserOut) => {
+    setSession((prev) => (prev ? { ...prev, user } : prev))
+    try {
+      const raw = sessionStorage.getItem(KEY)
+      if (raw) sessionStorage.setItem(KEY, JSON.stringify({ ...(JSON.parse(raw) as Stored), user }))
+    } catch {
+      /* profile remains updated until the page is reloaded */
+    }
+  }, [])
+
   useEffect(() => {
     setUnauthorizedHandler(() => {
       logout()
@@ -94,9 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login: (u: string, p: string) => run(() => opsApi.login(u, p)),
       signup: (name: string, email: string, password: string, role: RoleId) => run(() => opsApi.signup(name, email, password, role)),
       demoLogin: (role: RoleId) => run(() => opsApi.demo(role)),
+      updateUser,
       logout,
     }),
-    [session, busy, error, run, logout],
+    [session, busy, error, run, updateUser, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

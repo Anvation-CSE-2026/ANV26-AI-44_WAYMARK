@@ -1,11 +1,13 @@
 // Typed wrappers for the operations endpoints (auth, reports, chat, measures, evidence).
 // Responses are checked just enough to fail with a clear message instead of crashing a screen.
 import { ApiError, deleteJson, getBlob, patchJson, postForm, postJson, request, streamSse } from './api'
+import type { IncidentReport } from './api'
 import type {
   CellMeasureBrief,
   ChatEvent,
   ChatMessage,
   ChatSession,
+  ChangePasswordIn,
   EffectsOut,
   Evidence,
   EvidenceKind,
@@ -14,12 +16,14 @@ import type {
   MeasureDetail,
   MeasurePatch,
   Progress,
+  ProfileUpdateIn,
   Region,
   ReportChip,
   ReportStatus,
   ReportSummary,
   RoleId,
   TokenOut,
+  UserOut,
   VerifyRequest,
 } from './types.ops'
 
@@ -41,6 +45,12 @@ export const opsApi = {
     as<TokenOut>(await postJson('/api/auth/signup', { name, email, password, role }), 'sign-up', has('access_token', 'user')),
   demo: async (role: RoleId) =>
     as<TokenOut>(await postJson('/api/auth/demo', { role }), 'demo sign-in', has('access_token', 'user')),
+  profile: async (signal?: AbortSignal) =>
+    as<UserOut>(await request('GET', '/api/auth/me', { signal }), 'profile', has('id', 'name', 'role')),
+  updateProfile: async (body: ProfileUpdateIn) =>
+    as<UserOut>(await patchJson('/api/auth/profile', body), 'profile update', has('id', 'name', 'role')),
+  changePassword: async (body: ChangePasswordIn) =>
+    as<{ message: string }>(await postJson('/api/auth/change-password', body), 'password change', has('message')),
 
   effects: async (signal?: AbortSignal) =>
     as<EffectsOut>(await request('GET', '/api/effects', { signal }), 'settings', has('categories', 'credit_cap')),
@@ -73,6 +83,16 @@ export const opsApi = {
   comment: (id: number, text: string) => postJson(`/api/measures/${id}/comments`, { text }),
   verify: async (id: number, body: VerifyRequest) =>
     as<MeasureDetail>(await postJson(`/api/measures/${id}/verify`, body), 'measure', has('id', 'events')),
+
+  incidents: async (bbox: string, signal?: AbortSignal): Promise<IncidentReport[]> => {
+    const raw = await request('GET', '/api/incidents', { params: { bbox, limit: 3000 }, signal })
+    const result = as<{ items: IncidentReport[] }>(raw, 'incident list', has('items'))
+    return result.items
+  },
+  createIncident: async (body: { kind: 'crash' | 'near_miss'; lat: number; lng: number; occurred_at: string; severity?: number; note?: string }) =>
+    as<IncidentReport>(await postJson('/api/incidents', body), 'incident report', has('id', 'status', 'cell_id')),
+  reviewIncident: async (id: number, body: { decision: 'confirm' | 'reject'; note?: string }) =>
+    as<IncidentReport>(await postJson(`/api/incidents/${id}/review`, body), 'incident review', has('id', 'status', 'cell_id')),
 
   // ---- evidence
   uploadEvidence: async (

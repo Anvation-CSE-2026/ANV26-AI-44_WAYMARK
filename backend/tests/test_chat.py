@@ -204,7 +204,7 @@ def test_use_latest_needs_a_report(ops):
 # ---------------------------------------------------------------- playbooks and deterministic cards
 def test_category_owner_table_reads_from_effects_json():
     table = category_owner_table()
-    assert table["street_lighting"] == "engineer" and table["community_awareness"] == "community" and table["signal_timing"] == "planner"
+    assert table["street_lighting"] == "engineer" and table["community_awareness"] == "planner" and table["signal_timing"] == "planner"
 
 
 def test_digest_is_structured_and_cleaned(ready):
@@ -219,8 +219,8 @@ def test_digest_is_structured_and_cleaned(ready):
     assert set(d["valid_cell_ids"]) >= set(TOP)
 
 
-@pytest.mark.parametrize("role,owners", [("planner", {"planner", "engineer", "community"}), ("engineer", {"engineer"}),
-                                          ("community", {"community", "planner"})])
+@pytest.mark.parametrize("role,owners", [("planner", {"planner", "engineer"}), ("engineer", {"engineer"}),
+                                          ("community", {"planner", "engineer"})])
 def test_rule_based_cards_respect_role_scope(ready, role, owners):
     ops, h, rid, js, pdf = ready
     cards = rule_based_cards(RegionReport.model_validate_json(js), role)
@@ -352,7 +352,7 @@ def test_card_count_is_capped(ready, monkeypatch):
 def test_role_scope_filters_model_cards(ready, monkeypatch):
     ops, h, rid, js, pdf = ready
     cards = [good_card(title="Engineer owned", owner_role="engineer"), good_card(title="Planner owned", owner_role="planner"),
-             good_card(title="Community owned", owner_role="community", category="community_awareness")]
+             good_card(title="Community owned", owner_role="planner", category="community_awareness")]
     for role, expect in (("engineer", ["Engineer owned"]), ("community", ["Planner owned", "Community owned"]),
                          ("planner", ["Engineer owned", "Planner owned", "Community owned"])):
         with_client(monkeypatch, FakeClient(cards=cards))

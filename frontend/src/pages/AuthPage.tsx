@@ -11,6 +11,7 @@ export default function AuthPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const mode = params.get('mode') === 'signup' ? 'signup' : 'login'
+  const notice = (location.state as { notice?: unknown } | null)?.notice
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
@@ -58,6 +59,8 @@ export default function AuthPage() {
           <h1 id="auth-title">{mode === 'login' ? 'Welcome' : 'Create your account'}</h1>
           <p>{mode === 'login' ? 'Sign in to access your road-safety workspace.' : 'Get access to your road-safety workspace.'}</p>
         </div>
+
+        {typeof notice === 'string' && <p role="status" className="auth-hint">{notice}</p>}
 
         {mode === 'login' ? (
           <form className="auth-form" onSubmit={(event) => void submit(event)}>
@@ -107,7 +110,7 @@ export default function AuthPage() {
             <label className="auth-label" htmlFor="signup-role">Role</label>
             <select id="signup-role" className={fieldClass} value={role} onChange={(event) => setRole(event.target.value as RoleId)} required>
               <option value="engineer">Road Authorities</option>
-              <option value="planner">City Planner</option>
+              <option value="planner">City Planners</option>
               <option value="community">Traffic Police</option>
             </select>
             <p className="auth-hint">Use at least 6 characters. Your role controls workspace permissions.</p>

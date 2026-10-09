@@ -11,7 +11,7 @@ export interface Filters {
   emergingOnly: boolean
 }
 
-export type ColorMode = 'score' | 'emerging' | 'adjusted'
+export type ColorMode = 'score' | 'emerging' | 'adjusted' | 'projection' | 'incidents'
 
 export interface Scenario {
   night: boolean
@@ -404,13 +404,15 @@ export function Legend({
               ['score', 'Risk score'],
               ['emerging', 'Emerging risk'],
               ['adjusted', 'Adjusted risk (estimate)'],
+              ['projection', 'Progress projection'],
+              ['incidents', 'Incident activity'],
             ] as const).map(([m, label]) => (
               <button
                 key={m}
                 type="button"
                 aria-pressed={colorMode === m}
                 onClick={() => onColorMode(m)}
-                className={`rounded-md px-2 py-1.5 ${m === 'adjusted' ? 'col-span-2' : ''} ${colorMode === m ? 'bg-navy text-ivory' : 'text-navy hover:bg-navy/10'}`}
+                className={`rounded-md px-2 py-1.5 ${colorMode === m ? 'bg-navy text-ivory' : 'text-navy hover:bg-navy/10'}`}
               >
                 {label}
               </button>
@@ -431,6 +433,23 @@ export function Legend({
                   <strong>Placeholder weights:</strong> the effect sizes are not yet domain-validated.
                 </p>
               )}
+            </>
+          ) : colorMode === 'projection' ? (
+            <>
+              <GradientBar stops={SCORE_STOPS} left="Lower projection (0)" right="Higher projection (100)" />
+              <p className="mt-2 text-sm text-navy/80">
+                <strong>Progress projection, not confirmed risk reduction.</strong> Measure credit follows its current stage and combines multiplicatively, capped at {creditCap ? `${Math.round(creditCap * 100)}%` : 'the configured limit'}. Only verified measures lower adjusted risk.
+              </p>
+              {placeholderWeights && (
+                <p role="note" className="mt-2 rounded-md border border-amber/60 bg-amber/10 px-2 py-1.5 text-sm text-[#6b4210]">
+                  <strong>Placeholder weights:</strong> the effect sizes are not yet domain-validated.
+                </p>
+              )}
+            </>
+          ) : colorMode === 'incidents' ? (
+            <>
+              <GradientBar stops={SCORE_STOPS} left="No reports" right="More reports" />
+              <p className="mt-2 text-sm text-navy/80"><strong>Reported activity, not a risk score.</strong> Pending and confirmed reports are counted separately; the historical model score does not change.</p>
             </>
           ) : (
             <>

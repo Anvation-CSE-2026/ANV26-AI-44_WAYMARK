@@ -16,6 +16,10 @@ import { DetailPanel } from '../components/map/DetailPanel'
 import { CrashLayer, FitOnce, FitToBounds, FlyController, HexLayer, WorldLimits } from '../components/map/MapLayers'
 import type { FlyTarget, LevelInfo } from '../components/map/MapLayers'
 import { Card, ErrorBanner, LogoLoader } from '../components/ui'
+import { useAuth } from '../context/auth'
+import { opsApi } from '../lib/opsApi'
+import { IncidentLayer } from '../components/map/IncidentLayer'
+import { IncidentReportDialog } from '../components/map/IncidentReportDialog'
 
 const BASE_LAYERS = baseLayers()
 const HOUSTON: [number, number] = [29.7604, -95.3698]
@@ -23,6 +27,7 @@ const DEFAULT_FILTERS: Filters = { confidence: 'All', maxPast: Number.POSITIVE_I
 const NO_SCENARIO: Scenario = { night: false, rain: false, lowVis: false }
 
 export default function MapPage() {
+  const { user } = useAuth()
   const [params, setParams] = useSearchParams()
   const selectedId = params.get('cell')
 
@@ -128,6 +133,7 @@ export default function MapPage() {
   // ---- hexagon colouring
   const [opacity, setOpacity] = useState(0.35)
   const [colorMode, setColorMode] = useState<ColorMode>('score')
+  const maxIncidentCount = useMemo(() => cells.reduce((max, c) => Math.max(max, (c.incident_pending_count ?? 0) + (c.incident_confirmed_count ?? 0)), 1), [cells])
   const [level, setLevel] = useState<LevelInfo>({ grouped: true, points: false })
   // null until the first zoomed-in view asks the backend; false = crash points not loaded yet
   const [crashesAvailable, setCrashesAvailable] = useState<boolean | null>(null)
@@ -141,18 +147,26 @@ export default function MapPage() {
       }
       if (colorMode === 'emerging') return c.emerging_risk ? (c.history_percentile ?? 0) / 100 : null
       if (colorMode === 'adjusted') return (c.adjusted_risk_score ?? c.risk_score) / 100
+      if (colorMode === 'projection') return (c.projected_risk_score ?? c.adjusted_risk_score ?? c.risk_score) / 100
+      if (colorMode === 'incidents') return Math.log1p((c.incident_pending_count ?? 0) + (c.incident_confirmed_count ?? 0)) / Math.log1p(maxIncidentCount)
       return c.risk_score / 100
     },
-    [whatIf, colorMode],
+    [whatIf, colorMode, maxIncidentCount],
   )
   const tooltipFor = useCallback(
     (c: CellLite) =>
-      `${c.cell_id} · ${c.n_past_crashes} past crashes` +
+      `${c.cell_id}${c.street_name || c.locality ? ` · ${[c.street_name, c.locality].filter(Boolean).join(', ')}` : ''} · ${c.n_past_crashes} past crashes` +
       (c.history_percentile !== null
         ? ` · riskier than ${Math.round(c.history_percentile)}% of cells with similar history`
         : '') +
       (colorMode === 'adjusted' && c.adjusted_risk_score !== null
-        ? ` · score ${c.risk_score.toFixed(1)} → adjusted ${c.adjusted_risk_score.toFixed(1)} (estimate)`
+        ? ` · baseline ${c.risk_score.toFixed(1)} → verified adjusted ${c.adjusted_risk_score.toFixed(1)}`
+        : '') +
+      (colorMode === 'projection'
+        ? ` · baseline ${c.risk_score.toFixed(1)} → progress projection ${(c.projected_risk_score ?? c.risk_score).toFixed(1)} (estimate)`
+        : '') +
+      (colorMode === 'incidents'
+        ? ` · ${c.incident_confirmed_count ?? 0} confirmed and ${c.incident_pending_count ?? 0} pending reports`
         : ''),
     [colorMode],
   )
@@ -182,6 +196,7 @@ export default function MapPage() {
         if (c) setFlyTarget({ lat: c.lat, lng: c.lng, nonce: ++flyNonce.current })
         else pendingFly.current = id
       }
+      if (id) setRightPaneOpen(true)
     },
     [cellsById, setParams, region],
   )
@@ -191,6 +206,18 @@ export default function MapPage() {
     [selectedId],
   )
   const detail = detailQ.data
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      cellsQ.reload()
+      if (selectedId) detailQ.reload()
+    }
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => document.removeEventListener('visibilitychange', refreshWhenVisible)
+    // The map and selected-cell queries remount on route entry; this listener covers returning to a hidden tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (detail && pendingFly.current === detail.cell_id) {
@@ -245,8 +272,12 @@ export default function MapPage() {
     return null
   }, [region, placeSearch, selectedId])
 
-  const [controlsOpen, setControlsOpen] = useState(false)
-  const panelOpen = !!selectedId
+  const [leftPaneOpen, setLeftPaneOpen] = useState(() => window.matchMedia('(min-width: 768px)').matches)
+  const [rightPaneOpen, setRightPaneOpen] = useState(true)
+  const [pickIncidentMode, setPickIncidentMode] = useState(false)
+  const [incidentPoint, setIncidentPoint] = useState<[number, number] | null>(null)
+  const [incidentRefreshKey, setIncidentRefreshKey] = useState(0)
+  const isTrafficPolice = user?.role === 'community'
   const demoDetail = demoStep !== null && detail?.cell_id === DEMO_CELLS[demoStep] ? detail : null
   const searchPlaces = useCallback(
     (query: string, prefix = false, signal?: AbortSignal) => api.places(query, signal, prefix),
@@ -262,7 +293,7 @@ export default function MapPage() {
   }
 
   return (
-    <div className="relative h-[calc(100dvh-4rem)] min-h-[560px] w-full overflow-hidden" role="region" aria-label="Map of scored cells in Houston">
+    <div className="relative h-[calc(100dvh-4rem)] min-h-[320px] w-full overflow-hidden" role="region" aria-label="Map of scored cells in Houston">
       <p className="sr-only">
         Map markers cannot be reached with the keyboard. Use the locality search field, or the Audit list page, to open
         a cell.
@@ -298,7 +329,8 @@ export default function MapPage() {
           highlightIds={highlightIds}
           fillOpacity={opacity}
           forceNative={!!region}
-          onPickRegion={(id, res) => {
+          onPickRegion={(id, res, point) => {
+            if (pickIncidentMode && point) { setIncidentPoint(point); setPickIncidentMode(false); return }
             setPlaceSearch(null)
             setRegion({ id, res })
             selectCell(null, false)
@@ -308,11 +340,16 @@ export default function MapPage() {
           tooltipFor={tooltipFor}
           selectedId={selectedId}
           selected={selectedPos}
-          onSelect={(id) => selectCell(id)}
+          onSelect={(id, point) => {
+            if (pickIncidentMode && point) { setIncidentPoint(point); setPickIncidentMode(false); return }
+            selectCell(id)
+          }}
           onLevel={setLevel}
           centerPoints={crashesAvailable === false}
         />
         <CrashLayer enabled={!level.grouped} onAvailable={setCrashesAvailable} cellIds={placeIds ?? highlightIds} />
+        <IncidentLayer enabled={true} pickMode={pickIncidentMode} refreshKey={incidentRefreshKey}
+          onPick={(lat, lng) => { if (pickIncidentMode) { setIncidentPoint([lat, lng]); setPickIncidentMode(false) } }} />
         <FlyController target={flyTarget} />
         <FitOnce cells={cells} enabled={fitEnabled} />
       </MapContainer>
@@ -321,6 +358,12 @@ export default function MapPage() {
       <div className="absolute right-2 top-2 z-[1000] md:left-1/2 md:right-auto md:top-4 md:-translate-x-1/2">
         <BaseMapSwitch names={BASE_LAYERS.map((l) => l.name)} value={base.name} onChange={pickBase} />
       </div>
+
+      {isTrafficPolice && <button type="button" onClick={() => setPickIncidentMode((v) => !v)} aria-pressed={pickIncidentMode}
+        className={`absolute bottom-4 left-2 z-[1050] min-h-11 rounded-lg px-3 py-2 text-sm font-bold shadow-card md:bottom-auto md:left-auto md:right-4 md:top-16 ${pickIncidentMode ? 'bg-brass text-navy' : 'bg-navy text-ivory'}`}>
+        {pickIncidentMode ? 'Tap a cell to place report · Cancel' : '＋ Report crash / near miss'}
+      </button>}
+      {pickIncidentMode && <p role="status" className="pointer-events-none absolute left-1/2 top-14 z-[1040] -translate-x-1/2 rounded-full bg-navy px-3 py-2 text-center text-xs font-semibold text-ivory shadow-card md:top-24">Select the incident location on the map</p>}
 
       {/* Detail level hint, or the way out of region view */}
       {region ? (
@@ -351,21 +394,18 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* Mobile: open/close controls */}
       <button
         type="button"
-        onClick={() => setControlsOpen((o) => !o)}
-        aria-expanded={controlsOpen}
-        className="absolute left-2 top-2 z-[1050] rounded-lg bg-navy px-3 py-2 text-sm font-semibold text-ivory shadow-card md:hidden"
+        onClick={() => setLeftPaneOpen((o) => !o)}
+        aria-expanded={leftPaneOpen}
+        className="absolute left-2 top-2 z-[1060] rounded-lg bg-navy px-3 py-2 text-sm font-semibold text-ivory shadow-card"
       >
-        {controlsOpen ? 'Hide controls' : 'Filters & what-if'}
+        {leftPaneOpen ? 'Hide filters' : 'Filters & legend'}
       </button>
 
       {/* Left column: filters, what-if, legend */}
       <div
-        className={`pointer-events-none absolute inset-x-2 bottom-2 top-14 z-[1000] space-y-3 overflow-y-auto md:inset-x-auto md:bottom-4 md:left-4 md:top-4 md:block md:w-[22rem] ${
-          controlsOpen && !panelOpen ? 'block' : 'hidden'
-        }`}
+        className={`pointer-events-none absolute inset-x-2 top-14 z-[1000] ${selectedId || reportTarget ? 'max-h-[36dvh]' : 'max-h-[70dvh]'} space-y-3 overflow-y-auto md:inset-x-auto md:bottom-4 md:left-4 md:top-4 md:max-h-none md:w-[22rem] ${leftPaneOpen ? 'block' : 'hidden'}`}
       >
         <div className="pointer-events-auto">
           <FilterCard
@@ -409,9 +449,13 @@ export default function MapPage() {
       </div>
 
       {/* Selected-region report and cell details share the right-side pane. */}
-      {(reportTarget || selectedId) && (
+      {(reportTarget || selectedId) && <button type="button" onClick={() => setRightPaneOpen((o) => !o)} aria-expanded={rightPaneOpen}
+        className="absolute bottom-4 right-2 z-[1060] min-h-11 rounded-lg border border-navy/20 bg-white px-3 py-2 text-sm font-semibold text-navy shadow-card md:bottom-auto md:top-4 md:right-[28rem]">
+        {rightPaneOpen ? 'Hide details' : selectedId ? 'Show cell details' : 'Show region report'}
+      </button>}
+      {(reportTarget || selectedId) && rightPaneOpen && (
         <div className={`pointer-events-none absolute inset-x-2 z-[1000] flex flex-col gap-3 md:inset-x-auto md:right-4 md:w-[26rem] ${
-          selectedId ? 'bottom-2 h-[72%] md:bottom-4 md:top-4 md:h-auto' : 'top-14 bottom-2 md:top-4'
+          selectedId ? 'bottom-2 h-[52%] md:bottom-4 md:top-4 md:h-auto' : 'top-14 bottom-2 md:top-4'
         }`}>
           {reportTarget && (
             <div className="pointer-events-auto shrink-0">
@@ -451,6 +495,14 @@ export default function MapPage() {
         </div>
       )}
 
+      {incidentPoint && <IncidentReportDialog point={incidentPoint} onClose={() => setIncidentPoint(null)} onSubmit={async (body) => {
+        await opsApi.createIncident(body)
+        setIncidentRefreshKey((n) => n + 1)
+        cellsQ.reload()
+        if (selectedId) detailQ.reload()
+        setColorMode('incidents')
+      }} />}
+
       {/* Loading / error / empty states */}
       {cellsQ.loading && (
         <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-ivory/80 backdrop-blur-sm">
@@ -470,7 +522,7 @@ export default function MapPage() {
             </p>
             <p className="mt-1 text-navy/75">
               {cells.length === 0
-                ? 'Run the pipeline and load the database, then reload this page.'
+                ? 'This backend has no scored cells loaded. Import the project dataset into its database, then reload this page.'
                 : placeSearch ? 'Try another locality or clear the search.' : 'Loosen a filter to see cells again.'}
             </p>
             {cells.length > 0 && !placeSearch && (

@@ -70,33 +70,43 @@ const STATUS_TEXT: Record<string, string> = {
   verified: '● Verified',
 }
 
+const STATUS_PROGRESS: Record<string, number> = { planned: 0, in_progress: 25, evidence_submitted: 75, verified: 100 }
+
 /** Additive section: the cell's action-plan measures and its base versus adjusted (estimate) score. */
 function MeasuresSection({ detail }: { detail: CellDetail }) {
   if (!detail.has_measures || detail.measures.length === 0) return null
   const base = detail.risk_score
   const adj = detail.adjusted_risk_score
+  const projection = detail.projected_risk_score ?? adj ?? base
   const regions = [...new Map(detail.measures.map((m) => [`${m.region_kind}|${m.region_key}`, m])).values()]
   return (
     <section aria-labelledby="cell-measures" className="rounded-lg border border-brass/50 bg-brass/10 px-3 py-3">
       <h3 id="cell-measures" className="text-base font-bold">Measures in this cell</h3>
-      <p className="mt-1 text-lg">
-        <span className="text-sm text-navy/70">Base score </span>
-        <span className="font-semibold">{fmtNum(base, 1)}</span>
-        <span aria-hidden="true"> → </span>
-        <span className="sr-only"> to adjusted score </span>
-        <span className="font-semibold">{adj === null ? '—' : fmtNum(adj, 1)}</span>
-        <span className="ml-1 text-sm text-navy/70">(adjusted, estimate)</span>
+      <dl className="mt-3 grid grid-cols-3 gap-2">
+        <div className="rounded-lg bg-white/80 px-2.5 py-2">
+          <dt className="text-[10px] font-bold uppercase tracking-wide text-navy/55">Baseline</dt>
+          <dd className="mt-0.5 font-serif text-xl font-bold">{fmtNum(base, 1)}</dd>
+        </div>
+        <div className="rounded-lg bg-teal/10 px-2.5 py-2">
+          <dt className="text-[10px] font-bold uppercase tracking-wide text-teal">Verified</dt>
+          <dd className="mt-0.5 font-serif text-xl font-bold text-teal">{adj === null ? '—' : fmtNum(adj, 1)}</dd>
+        </div>
+        <div className="rounded-lg bg-brass/15 px-2.5 py-2">
+          <dt className="text-[10px] font-bold uppercase tracking-wide text-brass-700">Projected</dt>
+          <dd className="mt-0.5 font-serif text-xl font-bold">{projection === null ? '—' : fmtNum(projection, 1)}</dd>
+        </div>
+      </dl>
+      <p className="mt-2 text-xs leading-relaxed text-navy/70">
+        Projected risk follows measure stage and is an estimate, not a model rerun. Only planner-verified measures lower confirmed adjusted risk.
       </p>
-      <p className="mt-1 text-xs text-navy/70">
-        Only verified measures lower the score. This is an overlay estimate, not a re-run of the model.
-      </p>
-      <ul className="mt-2 space-y-1.5">
+      <ul className="mt-3 space-y-2">
         {detail.measures.map((m) => (
-          <li key={m.id} className="rounded-md bg-white/80 px-2 py-1.5 text-sm">
-            <span className="font-semibold">{m.title}</span>
-            <span className="ml-2 inline-block rounded-full border border-navy/25 px-2 py-0.5 text-xs font-semibold">
-              {STATUS_TEXT[m.status] ?? m.status}
-            </span>
+          <li key={m.id} className="rounded-lg bg-white/80 px-2.5 py-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <span className="font-semibold">{m.title}</span>
+              <span className="rounded-full border border-navy/15 px-2 py-0.5 text-[11px] font-semibold">{STATUS_TEXT[m.status] ?? m.status}</span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-navy/10" aria-hidden="true"><div className="h-full rounded-full bg-brass" style={{ width: `${STATUS_PROGRESS[m.status] ?? 0}%` }} /></div>
           </li>
         ))}
       </ul>
@@ -136,6 +146,9 @@ export function DetailPanel({ cellId, detail, loading, error, onRetry, onClose, 
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brass-700">Cell</p>
           <h2 className="truncate font-mono text-lg font-semibold">{cellId}</h2>
+          <p className="mt-0.5 truncate text-xs font-medium text-navy/65" title={[detail?.street_name, detail?.locality].filter(Boolean).join(' · ')}>
+            {[detail?.street_name, detail?.locality].filter(Boolean).join(' · ') || 'Street / locality unavailable'}
+          </p>
         </div>
         <button
           type="button"
@@ -184,8 +197,18 @@ export function DetailPanel({ cellId, detail, loading, error, onRetry, onClose, 
             <dl className="grid grid-cols-2 gap-2">
               <Stat label="Blackspot likelihood" value={fmtProb(detail.baseline_prob)} primary />
               <Stat label="Past crashes" value={fmtInt(detail.n_past_crashes)} />
-              <Stat label="Risk score" value={fmtNum(detail.risk_score, 3)} />
+              <Stat label="Baseline risk score" value={fmtNum(detail.risk_score, 3)} />
+              <Stat label="Verified adjusted score" value={fmtNum(detail.adjusted_risk_score, 3)} />
+              <Stat label="Progress projection · estimate" value={fmtNum(detail.projected_risk_score, 3)} />
             </dl>
+            <section aria-label="Incident activity" className="rounded-xl border border-navy/10 bg-ivory-100 p-3">
+              <h3 className="text-sm font-bold">Incident activity</h3>
+              <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg bg-white px-3 py-2"><dt className="text-xs font-semibold uppercase tracking-wide text-teal">Confirmed</dt><dd className="text-lg font-bold">{detail.incident_confirmed_count ?? 0}</dd></div>
+                <div className="rounded-lg bg-white px-3 py-2"><dt className="text-xs font-semibold uppercase tracking-wide text-brass-700">Pending review</dt><dd className="text-lg font-bold">{detail.incident_pending_count ?? 0}</dd></div>
+              </dl>
+              <p className="mt-2 text-xs leading-relaxed text-navy/65">Reported activity is separate from the historical model score. Pending reports await City Planner review.</p>
+            </section>
             <p className="text-xs leading-relaxed text-navy/65">
               Model-estimated likelihood of reaching the blackspot definition of 3 or more crashes in the historical
               evaluation year. This is a backtest score, not a calibrated live forecast.

@@ -1,9 +1,10 @@
 """Pydantic response models (the API contract the frontend relies on)."""
 from __future__ import annotations
 
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .schemas_ops import CellMeasureBrief
 
@@ -21,6 +22,9 @@ class Health(BaseModel):
 class CellLite(BaseModel):
     cell_id: str
     locality: Optional[str] = None
+    street_name: Optional[str] = None
+    incident_pending_count: int = 0
+    incident_confirmed_count: int = 0
     lat: float
     lng: float
     n_past_crashes: int
@@ -31,6 +35,8 @@ class CellLite(BaseModel):
     top_overall: bool          # in the top 300 cells by risk score (the "blue" markers)
     # Additive (operations build): overlay estimate. Equal to risk_score until a measure is verified.
     adjusted_risk_score: Optional[float] = None
+    # Stage-weighted implementation projection; does not replace confirmed adjusted risk.
+    projected_risk_score: Optional[float] = None
     has_measures: bool = False
     measures: list[CellMeasureBrief] = []
 
@@ -61,6 +67,10 @@ class ScenarioItem(BaseModel):
 
 class CellDetail(BaseModel):
     cell_id: str
+    locality: Optional[str] = None
+    street_name: Optional[str] = None
+    incident_pending_count: int = 0
+    incident_confirmed_count: int = 0
     lat: float
     lng: float
     n_past_crashes: int
@@ -83,6 +93,7 @@ class CellDetail(BaseModel):
     google_maps_url: str
     # Additive (operations build)
     adjusted_risk_score: Optional[float] = None
+    projected_risk_score: Optional[float] = None
     has_measures: bool = False
     measures: list[CellMeasureBrief] = []
 
@@ -209,6 +220,39 @@ class CrashPoint(BaseModel):
     severity: Optional[int]
     weather: Optional[str]
     night: bool
+
+
+class IncidentReportIn(BaseModel):
+    kind: Literal["crash", "near_miss"]
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    occurred_at: datetime
+    severity: Optional[int] = Field(default=None, ge=1, le=4)
+    note: Optional[str] = Field(default=None, max_length=1000)
+
+
+class IncidentReviewIn(BaseModel):
+    decision: Literal["confirm", "reject"]
+    note: Optional[str] = Field(default=None, max_length=1000)
+
+
+class IncidentReportOut(BaseModel):
+    id: int
+    kind: Literal["crash", "near_miss"]
+    cell_id: str
+    lat: float
+    lng: float
+    occurred_at: str
+    severity: Optional[int]
+    note: Optional[str]
+    status: Literal["pending", "confirmed", "rejected"]
+    review_note: Optional[str] = None
+    created_at: str
+
+
+class IncidentReportList(BaseModel):
+    count: int
+    items: list[IncidentReportOut]
 
 
 class CrashList(BaseModel):

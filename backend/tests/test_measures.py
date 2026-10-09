@@ -27,10 +27,10 @@ def move(client, headers, mid, status, note=None):
 
 # ---------------------------------------------------------------- create
 def test_create_measure_defaults_and_snapshot(ops):
-    h = auth(ops, "community")
+    h = auth(ops, "engineer")
     m = make_measure(ops, h, cells=TOP2)
     assert m["status"] == "planned" and m["owner_role"] == "engineer"          # default_owner of street_lighting
-    assert m["effect_weight"] == 0.10 and m["created_by"] == "demo-community" and m["cell_ids"] == sorted(TOP2)
+    assert m["effect_weight"] == 0.10 and m["created_by"] == "demo-engineer" and m["cell_ids"] == sorted(TOP2)
     assert m["category_label"].startswith("Street lighting") and m["evidence_required"] == ["before", "after"]
     d = ops.get(f"/api/measures/{m['id']}", headers=h).json()
     assert [e["type"] for e in d["events"]] == ["created"] and d["evidence"] == []
@@ -39,8 +39,8 @@ def test_create_measure_defaults_and_snapshot(ops):
 
 
 def test_create_owner_can_be_overridden_and_planner_creates_planned(ops):
-    m = make_measure(ops, auth(ops, "planner"), owner_role="community", source="chat", report_id="WMK-20200101-ABCDEF")
-    assert m["owner_role"] == "community" and m["status"] == "planned" and m["source"] == "chat"
+    m = make_measure(ops, auth(ops, "planner"), owner_role="engineer", source="chat", report_id="WMK-20200101-ABCDEF")
+    assert m["owner_role"] == "engineer" and m["status"] == "planned" and m["source"] == "chat"
     assert m["report_id"] is None                                                # unknown report ids are not linked
 
 
@@ -101,7 +101,7 @@ def test_full_walk_changes_the_numbers_correctly(ops):
     p = progress(ops, eng)
     assert p["implementation_pct"] == 100.0 and p["verified_pct"] == 100.0
     # cells 48 and 49 each lose 10%: (1225 - 4.8 - 4.9) / 49 = 24.802 -> 24.8
-    assert p["base_index"] == 25.0 and p["adjusted_index"] == 24.8
+    assert p["base_index"] == 25.0 and p["adjusted_index"] == 24.8 and p["projected_index"] == 24.8
     assert 0 < p["adjusted_index"] < p["base_index"]
 
     types = [e["type"] for e in ops.get(f"/api/measures/{mid}", headers=eng).json()["events"]]
@@ -115,12 +115,15 @@ def test_full_walk_changes_the_numbers_correctly(ops):
     top = TOP2[-1]
     c = ops.get(f"/api/cells/{top}").json()
     assert c["risk_score"] == 49.0 and c["adjusted_risk_score"] == pytest.approx(44.1) and c["has_measures"] is True
+    assert c["projected_risk_score"] == pytest.approx(44.1)
     assert c["measures"] == [{"id": mid, "title": m["title"], "status": "verified", "category": "street_lighting",
                               "region_kind": "h3_parent", "region_key": OPS_PARENT}]
     other = ops.get(f"/api/cells/{OPS_CELLS[0]}").json()
-    assert other["adjusted_risk_score"] == other["risk_score"] == 1.0 and other["has_measures"] is False and other["measures"] == []
+    assert other["adjusted_risk_score"] == other["risk_score"] == other["projected_risk_score"] == 1.0
+    assert other["has_measures"] is False and other["measures"] == []
     lst = {i["cell_id"]: i for i in ops.get("/api/cells").json()["items"]}
     assert lst[top]["adjusted_risk_score"] == pytest.approx(44.1) and lst[top]["has_measures"] is True
+    assert lst[top]["projected_risk_score"] == pytest.approx(44.1)
     assert lst[OPS_CELLS[5]]["has_measures"] is False and lst[OPS_CELLS[5]]["measures"] == []
 
 
@@ -131,6 +134,32 @@ def test_unverified_measure_never_lowers_the_adjusted_score(ops):
     upload(ops, h, m["id"], "after")
     c = ops.get(f"/api/cells/{TOP2[-1]}").json()
     assert c["adjusted_risk_score"] == c["risk_score"] == 49.0 and c["has_measures"] is True
+    assert c["projected_risk_score"] == pytest.approx(47.78)
+
+
+def test_projected_score_moves_with_progress_while_confirmed_score_waits_for_verification(ops, roles):
+    engineer, planner = roles["engineer"], roles["planner"]
+    m = make_measure(ops, engineer, category="street_lighting", cells=[TOP2[-1]])
+    cell_url = f"/api/cells/{TOP2[-1]}"
+
+    planned = ops.get(cell_url).json()
+    assert planned["risk_score"] == planned["adjusted_risk_score"] == planned["projected_risk_score"] == 49.0
+
+    assert move(ops, engineer, m["id"], "in_progress").status_code == 200
+    in_progress = ops.get(cell_url).json()
+    assert in_progress["risk_score"] == in_progress["adjusted_risk_score"] == 49.0
+    assert in_progress["projected_risk_score"] == pytest.approx(47.78)
+
+    assert upload(ops, engineer, m["id"], "after").status_code == 201
+    submitted = ops.get(cell_url).json()
+    assert submitted["adjusted_risk_score"] == 49.0
+    assert submitted["projected_risk_score"] == pytest.approx(45.33)
+
+    assert ops.post(f"/api/measures/{m['id']}/verify", json={"decision": "approve"}, headers=planner).status_code == 200
+    verified = ops.get(cell_url).json()
+    assert verified["adjusted_risk_score"] == verified["projected_risk_score"] == pytest.approx(44.1)
+    p = progress(ops, planner)
+    assert p["projected_index"] == p["adjusted_index"]
 
 
 # ---------------------------------------------------------------- state machine
@@ -165,7 +194,7 @@ def test_evidence_submitted_cannot_go_back_to_planned_and_verified_is_final(ops)
 
 def test_community_cannot_change_status_but_can_comment(ops):
     com, eng = auth(ops, "community"), auth(ops, "engineer")
-    m = make_measure(ops, com)
+    m = make_measure(ops, eng)
     r = move(ops, com, m["id"], "in_progress")
     assert r.status_code == 403 and r.json()["detail"]["code"] == "forbidden"
     c = ops.post(f"/api/measures/{m['id']}/comments", json={"text": "Seen near the school"}, headers=com)
@@ -307,9 +336,12 @@ def test_cancelled_measures_drop_out_of_the_numbers(ops, roles):
 
 
 def test_edit_fields_and_locks(ops, roles):
-    m = make_measure(ops, roles["community"])
-    r = ops.patch(f"/api/measures/{m['id']}", json={"title": "Better title here", "owner_role": "planner"}, headers=roles["community"])
-    assert r.status_code == 200 and r.json()["title"] == "Better title here" and r.json()["owner_role"] == "planner"
+    m = make_measure(ops, roles["engineer"])
+    r = ops.patch(f"/api/measures/{m['id']}", json={"title": "Better title here"}, headers=roles["engineer"])
+    assert r.status_code == 200 and r.json()["title"] == "Better title here"
+    assert ops.patch(f"/api/measures/{m['id']}", json={"title": "Wrong owner"}, headers=roles["community"]).status_code == 403
+    assigned = ops.patch(f"/api/measures/{m['id']}", json={"owner_role": "planner"}, headers=roles["planner"])
+    assert assigned.status_code == 200 and assigned.json()["owner_role"] == "planner"
     other = auth(ops, demo=False, username="community", password="waymark-community")
     assert ops.patch(f"/api/measures/{m['id']}", json={"title": "Hijacked title"}, headers=other).status_code == 403
     assert ops.patch(f"/api/measures/{m['id']}", json={"title": "ab"}, headers=roles["community"]).status_code == 422

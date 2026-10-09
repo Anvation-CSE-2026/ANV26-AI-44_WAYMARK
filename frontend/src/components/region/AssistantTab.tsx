@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent, FormEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Link } from 'react-router-dom'
+import { ArrowUpRight, Check, FileText, Landmark, MapPin, Paperclip, RotateCw, Send, ShieldCheck, Sparkles, Square, Users, Wrench } from 'lucide-react'
 import { ApiError } from '../../lib/api'
 import { opsApi } from '../../lib/opsApi'
 import { ROLE_LABELS } from '../../lib/types.ops'
 import type { ChatEvent, ChatSession, RecommendationCard, RegionReport, ReportChip, RoleId } from '../../lib/types.ops'
 import { Card } from '../ui'
+import { useAuth } from '../../context/auth'
 import { categoryLabel, fmtDate, useEffects } from '../ops/util'
 
 const ROLE_INFO: Record<RoleId, { blurb: string; starters: string[] }> = {
@@ -22,6 +24,12 @@ const ROLE_INFO: Record<RoleId, { blurb: string; starters: string[] }> = {
     blurb: 'Focus on traffic safety operations, site observations, and coordination with planners.',
     starters: ['Which hotspots need traffic safety attention first?', 'What should officers document during a site visit?', 'What should Traffic Police coordinate with City Planners?'],
   },
+}
+
+const ROLE_ICONS: Record<RoleId, typeof Landmark> = {
+  planner: Landmark,
+  engineer: Wrench,
+  community: Users,
 }
 
 interface UiMessage {
@@ -43,14 +51,14 @@ function Markdown({ text }: { text: string }) {
       skipHtml
       components={{
         a: ({ href, children }) => (
-          <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-teal underline">
+          <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-teal underline decoration-teal/40 underline-offset-4 hover:decoration-teal">
             {children}
           </a>
         ),
         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
         ul: ({ children }) => <ul className="mb-2 list-disc space-y-1 pl-5">{children}</ul>,
         ol: ({ children }) => <ol className="mb-2 list-decimal space-y-1 pl-5">{children}</ol>,
-        code: ({ children }) => <code className="rounded bg-navy/10 px-1 font-mono text-sm">{children}</code>,
+        code: ({ children }) => <code className="rounded-md bg-navy/10 px-1.5 py-0.5 font-mono text-[0.9em]">{children}</code>,
       }}
     >
       {text}
@@ -69,6 +77,7 @@ export function AssistantTab({
   attachReport: RegionReport | null
   onAddedToPlan: (title: string) => void
 }) {
+  const { user } = useAuth()
   const fx = useEffects()
   const [session, setSession] = useState<ChatSession | null>(null)
   const [chip, setChip] = useState<ReportChip | null>(null)
@@ -209,6 +218,7 @@ export function AssistantTab({
 
   const addToPlan = async (card: RecommendationCard) => {
     if (!chip) return
+    if (user?.role === 'community' || (user?.role === 'engineer' && card.owner_role !== 'engineer')) return
     setCard(card.card_id, { state: 'adding' })
     try {
       await opsApi.createMeasure({
@@ -234,50 +244,69 @@ export function AssistantTab({
   // ------------------------------------------------------------------ role selector
   if (!session) {
     return (
-      <div className="space-y-4">
-        <h2 className="font-serif text-2xl font-bold">Who is asking?</h2>
-        <p className="max-w-3xl text-navy/80">
-          Choose a role. It sets the assistant's tone and which measures it may propose. Then attach a Region Report and
-          ask a question.
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center py-6 sm:py-10">
+        <div className="mb-7 flex items-center gap-3">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-navy text-brass shadow-card"><Sparkles aria-hidden="true" className="h-6 w-6" /></span>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brass-700">WAYMARK assistant</p>
+            <h2 className="font-serif text-3xl font-bold tracking-tight sm:text-4xl">How can I help?</h2>
+          </div>
+        </div>
+        <p className="mb-6 max-w-2xl leading-relaxed text-navy/70">
+          Choose your workspace to tailor the guidance and proposed actions to your role.
         </p>
         {attachReport && (
-          <p role="note" className="rounded-lg bg-brass/15 px-3 py-2 font-semibold">
-            Report {attachReport.report_id} is ready to attach once you pick a role.
+          <p role="note" className="mb-5 flex items-center gap-2 rounded-xl border border-brass/30 bg-brass/10 px-4 py-3 text-sm font-semibold text-navy">
+            <FileText aria-hidden="true" className="h-4 w-4 shrink-0 text-brass-700" />
+            Report {attachReport.report_id} will be attached when you start.
           </p>
         )}
-        <div role="group" aria-label="Choose a role" className="grid gap-3 md:grid-cols-3">
-          {(Object.keys(ROLE_INFO) as RoleId[]).map((r) => (
-            <button
+        <div role="group" aria-label="Choose a role" className="grid gap-4 md:grid-cols-3">
+          {(Object.keys(ROLE_INFO) as RoleId[]).map((r) => {
+            const RoleIcon = ROLE_ICONS[r]
+            return <button
               key={r}
               type="button"
               disabled={creating !== null}
               onClick={() => void startSession(r)}
-              className="rounded-[12px] border-2 border-navy/15 bg-white p-4 text-left shadow-card hover:border-brass disabled:opacity-60"
+              className="group relative flex min-h-52 flex-col rounded-2xl border border-navy/10 bg-white p-5 text-left shadow-card transition duration-200 hover:-translate-y-1 hover:border-brass/60 hover:shadow-lift focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass disabled:pointer-events-none disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none"
             >
-              <span className="block font-serif text-xl font-bold">{ROLE_LABELS[r]}</span>
-              <span className="mt-1 block text-navy/75">{ROLE_INFO[r].blurb}</span>
-              <span className="mt-3 block text-sm font-semibold text-teal">{creating === r ? 'Starting…' : 'Start as this role →'}</span>
+              <span className="mb-5 flex items-start justify-between">
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-ivory text-navy transition-colors group-hover:bg-brass/15"><RoleIcon aria-hidden="true" className="h-5 w-5" /></span>
+                <ArrowUpRight aria-hidden="true" className="h-5 w-5 text-navy/35 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brass-700" />
+              </span>
+              <span className="block font-serif text-xl font-bold leading-tight">{ROLE_LABELS[r]}</span>
+              <span className="mt-2 block text-sm leading-relaxed text-navy/70">{ROLE_INFO[r].blurb}</span>
+              <span className="mt-auto pt-5 text-sm font-bold text-teal">{creating === r ? 'Starting your chat…' : 'Continue as this role'}</span>
             </button>
-          ))}
+          })}
         </div>
-        {createError && <p role="alert" className="font-semibold text-brick">{createError}</p>}
+        {createError && <p role="alert" className="mt-4 rounded-xl border border-brick/25 bg-brick/5 px-4 py-3 font-semibold text-brick">{createError}</p>}
       </div>
     )
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="font-serif text-2xl font-bold">Assistant</h2>
-        <span className="rounded-full bg-navy px-3 py-0.5 text-sm font-semibold text-ivory">{role && ROLE_LABELS[role]}</span>
-        <button type="button" onClick={() => setSession(null)} className="text-sm font-semibold text-teal underline-offset-2 hover:underline">
-          Change role (starts a new chat)
-        </button>
+    <div className="flex min-h-[32rem] flex-1 flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-navy px-4 py-4 text-ivory shadow-card sm:px-6">
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-brass-soft ring-1 ring-white/15"><Sparkles aria-hidden="true" className="h-5 w-5" /></span>
+          <div>
+            <h2 className="font-serif text-xl font-bold sm:text-2xl">WAYMARK assistant</h2>
+            <p className="mt-0.5 text-xs text-ivory/65 sm:text-sm">Road safety insights for your region</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-ivory sm:text-sm">{role && ROLE_LABELS[role]}</span>
+          <button type="button" onClick={() => setSession(null)} className="rounded-full px-3 py-2 text-xs font-semibold text-ivory/75 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass sm:text-sm">
+            Change role
+          </button>
+        </div>
       </div>
 
-      {/* ---------------------------------------------------------- chat */}
       {anyFallback && (
-        <div role="status" className="rounded-lg border border-amber/60 bg-amber/10 px-3 py-2 font-semibold text-[#6b4210]">
+        <div role="status" className="flex items-center gap-2 rounded-xl border border-amber/50 bg-amber/10 px-4 py-3 text-sm font-semibold text-[#6b4210]">
+          <span aria-hidden="true" className="grid h-6 w-6 place-items-center rounded-full bg-amber/20">!</span>
           AI assistant unavailable; showing rule-based suggestions
         </div>
       )}
@@ -291,187 +320,182 @@ export function AssistantTab({
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false)
         }}
         onDrop={onDrop}
-        className={`relative flex min-h-[24rem] flex-1 flex-col rounded-[12px] ${dragging ? 'ring-2 ring-brass' : ''}`}
+        className={`relative flex min-h-[30rem] flex-1 flex-col rounded-2xl transition-shadow ${dragging ? 'ring-2 ring-brass ring-offset-2' : ''}`}
       >
-      <Card className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-navy/10 px-4 py-3 text-sm">
-          {chip ? (
-            <>
-              <span className="font-semibold">Attached report</span>
-              <span className="rounded-full border border-teal/50 bg-teal/10 px-2 py-0.5 font-mono text-xs text-teal">{chip.report_id}</span>
-              <span>{chip.region.name}</span>
-              <span className="text-navy/60">Generated {fmtDate(chip.generated_at)}</span>
-              {chip.stale && (
-                <span role="alert" className="flex basis-full flex-wrap items-center gap-2 rounded-lg border border-amber/60 bg-amber/10 px-3 py-2 text-[#6b4210]">
-                  <span aria-hidden="true">⚠</span>
-                  <span className="flex-1">Out of date: {chip.stale_reason}</span>
-                  <button type="button" onClick={() => void latest()} className="rounded-md bg-navy px-3 py-1 text-sm font-semibold text-ivory hover:bg-navy-800">
-                    Use latest report
-                  </button>
-                </span>
+        <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-navy/10 shadow-card">
+          <div className="border-b border-navy/10 bg-white px-4 py-4 sm:px-6">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              {chip ? (
+                <>
+                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-teal/10 text-teal"><FileText aria-hidden="true" className="h-4 w-4" /></span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold">{chip.report_id}</span>
+                      <span className="rounded-full bg-teal/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-teal">Report attached</span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-navy/60 sm:text-sm">
+                      <span className="inline-flex items-center gap-1"><MapPin aria-hidden="true" className="h-3.5 w-3.5" />{chip.region.name}</span>
+                      <span>Generated {fmtDate(chip.generated_at)}</span>
+                    </div>
+                  </div>
+                  {attaching && <span role="status" className="text-xs font-semibold text-teal">Attaching…</span>}
+                </>
+              ) : (
+                <>
+                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-ivory text-navy/70"><FileText aria-hidden="true" className="h-4 w-4" /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">Add a Region Report</p>
+                    <p className="mt-0.5 text-xs text-navy/60 sm:text-sm">Attach a PDF or JSON for report-specific answers and recommendations.</p>
+                  </div>
+                  {attaching && <span role="status" className="text-xs font-semibold text-teal">Attaching…</span>}
+                </>
               )}
-              {otherRegion && (
-                <span className="basis-full text-navy/75">
-                  This report is for another region. Measures go to{' '}
-                  <Link className="font-semibold text-teal underline" to={`/region/${encodeURIComponent(chip.region.key)}?kind=${encodeURIComponent(chip.region.kind)}&tab=progress`}>
-                    {chip.region.name}
-                  </Link>.
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="text-navy/70">Attach a report to get recommendations and ask report-specific questions.</span>
-          )}
-          {attaching && <span role="status" className="font-semibold text-teal">Attaching report…</span>}
-          {attachNote && <span role={attachNote.ok ? 'status' : 'alert'} className={`basis-full font-semibold ${attachNote.ok ? 'text-teal' : 'text-brick'}`}>{attachNote.text}</span>}
-        </div>
-        {dragging && <p className="mx-4 mt-3 rounded-lg bg-brass/15 px-3 py-2 text-center text-sm font-semibold">Drop a report PDF or JSON file to attach it</p>}
-        <div ref={listRef} aria-live="polite" aria-label="Conversation" role="log" className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          {msgs.length === 0 && (
-            <div>
-              <p className="text-navy/75">Ask a question about the attached report, or start with one of these:</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {role &&
-                  ROLE_INFO[role].starters.map((s) => (
-                    <button key={s} type="button" disabled={busy} onClick={() => void send(s)} className="rounded-full border border-navy/25 bg-white px-3 py-1.5 text-sm font-semibold hover:bg-ivory-200">
-                      {s}
-                    </button>
-                  ))}
-              </div>
             </div>
-          )}
-          {msgs.map((m) => (
-            <div key={m.key} className={m.author === 'user' ? 'flex justify-end' : ''}>
-              <div className={`max-w-[48rem] rounded-[12px] px-4 py-3 ${m.author === 'user' ? 'bg-navy text-ivory' : 'bg-ivory-200/70'}`}>
-                <p className="sr-only">{m.author === 'user' ? 'You said' : 'Assistant said'}</p>
-                {m.author === 'assistant' && m.content === '' && m.streaming ? (
-                  <p className="text-navy/70">Thinking…</p>
-                ) : m.author === 'assistant' ? (
-                  <Markdown text={m.content} />
-                ) : (
-                  <p className="whitespace-pre-wrap">{m.content}</p>
-                )}
-                {m.note && (
-                  <p className="mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold text-brick">
-                    {m.note}
-                    {m.question && !busy && (
-                      <button type="button" onClick={() => void send(m.question ?? '')} className="rounded-md border border-brick/50 bg-white px-2 py-0.5 text-brick hover:bg-brick/10">
-                        Retry
-                      </button>
-                    )}
-                  </p>
-                )}
-                {m.cards.length > 0 && (
-                  <section className="mt-4" aria-label="Recommended actions">
-                    <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-brass-700">Recommended actions</h3>
-                    <p className="mb-3 text-sm text-navy/70">Choose <strong>Create action</strong> to add a card to the plan and open Progress.</p>
-                    <ul className="space-y-3">
-                      {m.cards.map((c) => {
-                      const st = cards[c.card_id] ?? { state: 'idle' as const }
-                      if (st.state === 'dismissed') return null
-                      return (
-                        <li key={c.card_id}>
-                          <article aria-label={`Recommendation: ${c.title}`} className="rounded-[12px] border border-navy/15 bg-white p-4 text-navy">
-                            <h4 className="font-semibold">{c.title}</h4>
-                            <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-navy/75">
-                              <span>Category: <strong>{categoryLabel(fx, c.category)}</strong></span>
-                              <span>Owner: <strong>{ROLE_LABELS[c.owner_role]}</strong></span>
-                              {c.evidence_needed.length > 0 && <span>Evidence: {c.evidence_needed.join(' + ')} photos</span>}
-                            </p>
-                            <p className="mt-2">{c.rationale}</p>
-                            <p className="mt-2 text-sm text-navy/70">
-                              Cells:{' '}
-                              {c.cell_ids.map((id, i) => (
-                                <span key={id}>
-                                  {i > 0 && ', '}
-                                  <Link to={`/map?cell=${encodeURIComponent(id)}`} className="font-mono text-teal underline-offset-2 hover:underline">{id}</Link>
-                                </span>
-                              ))}
-                            </p>
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              {st.state === 'added' ? (
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-teal bg-teal px-3 py-1 text-sm font-semibold text-white">
-                                  <span aria-hidden="true">✓</span>Created — opening Progress
-                                </span>
-                              ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    disabled={st.state === 'adding' || !chip}
-                                    onClick={() => void addToPlan(c)}
-                                    className="rounded-lg bg-navy px-3 py-1.5 text-sm font-semibold text-ivory hover:bg-navy-800 disabled:opacity-60"
-                                  >
-                                    {st.state === 'adding' ? 'Creating…' : 'Create action'}
-                                  </button>
-                                  <button type="button" onClick={() => setCard(c.card_id, { state: 'dismissed' })} className="rounded-lg border border-navy/25 px-3 py-1.5 text-sm font-semibold hover:bg-ivory-200">
-                                    Dismiss
-                                  </button>
-                                </>
-                              )}
-                              {st.error && <span role="alert" className="text-sm font-semibold text-brick">{st.error}</span>}
-                            </div>
-                          </article>
-                        </li>
-                      )
-                      })}
-                    </ul>
-                  </section>
-                )}
+            {chip?.stale && (
+              <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2.5 text-sm text-[#6b4210]">
+                <span aria-hidden="true">⚠</span>
+                <span className="min-w-0 flex-1">Out of date: {chip.stale_reason}</span>
+                <button type="button" onClick={() => void latest()} className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3 py-2 text-xs font-bold text-white transition hover:bg-navy-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">
+                  <RotateCw aria-hidden="true" className="h-3.5 w-3.5" />Use latest report
+                </button>
               </div>
-            </div>
-          ))}
-        </div>
-        <form onSubmit={submit} className="flex flex-wrap items-stretch gap-2 border-t border-navy/10 p-3">
-          <label className={`relative inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-navy/25 bg-white text-navy hover:bg-ivory-200 focus-within:outline focus-within:outline-[3px] focus-within:outline-brass ${attaching ? 'pointer-events-none opacity-50' : ''}`}>
-            <span className="sr-only">Attach a report PDF or JSON file</span>
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-              <path d="m21.4 11.1-8.5 8.5a5.2 5.2 0 0 1-7.4-7.4l9.2-9.1a3.5 3.5 0 0 1 5 5l-9.2 9.2a1.7 1.7 0 0 1-2.5-2.5l8.5-8.5" />
-            </svg>
-            <input
-              type="file"
-              accept=".pdf,.json,application/pdf,application/json"
-              className="sr-only"
-              disabled={attaching}
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) void attachFile(f, f.name)
-                e.target.value = ''
-              }}
-            />
-          </label>
-          <label className="block min-w-0 flex-1 text-sm font-semibold">
-            <span className="sr-only">Your question</span>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  void send(input)
-                }
-              }}
-              rows={1}
-              maxLength={4000}
-              placeholder={chip ? 'Ask about this report…' : 'Attach a report first, then ask…'}
-              className="block h-10 w-full resize-none rounded-lg border border-navy/25 px-3 py-2 font-normal leading-5"
-            />
-          </label>
-          {busy ? (
-            <button type="button" onClick={() => abortRef.current?.abort()} className="h-10 shrink-0 rounded-lg border border-brick/60 px-4 py-2 font-semibold text-brick hover:bg-brick/10">
-              Stop
-            </button>
-          ) : (
-            <button type="submit" disabled={!input.trim()} className="h-10 shrink-0 rounded-lg bg-navy px-5 py-2 font-semibold text-ivory hover:bg-navy-800 disabled:opacity-50">
-              Send
-            </button>
-          )}
-        </form>
-      </Card>
-      </div>
+            )}
+            {otherRegion && chip && (
+              <p className="mt-3 rounded-lg bg-ivory px-3 py-2 text-sm text-navy/75">
+                This report is for another region. Measures go to{' '}
+                <Link className="font-semibold text-teal underline decoration-teal/40 underline-offset-4" to={`/region/${encodeURIComponent(chip.region.key)}?kind=${encodeURIComponent(chip.region.kind)}&tab=progress`}>
+                  {chip.region.name}
+                </Link>.
+              </p>
+            )}
+            {attachNote && <p role={attachNote.ok ? 'status' : 'alert'} className={`mt-2 text-sm font-semibold ${attachNote.ok ? 'text-teal' : 'text-brick'}`}>{attachNote.text}</p>}
+          </div>
 
-      <p className="text-sm text-navy/70">
-        Suggestions are estimates for discussion, not engineering or legal advice. Check numbers against the report.
-      </p>
+          <div className="relative flex min-h-0 flex-1 flex-col bg-[#f8f6f1]">
+            {dragging && <p className="absolute inset-x-4 top-4 z-10 rounded-xl border border-dashed border-brass bg-white/95 px-4 py-3 text-center text-sm font-bold text-navy shadow-card">Drop the report here to attach it</p>}
+            <div ref={listRef} aria-live="polite" aria-label="Conversation" role="log" className="min-h-[18rem] flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+              {msgs.length === 0 && (
+                <div className="mx-auto flex min-h-[17rem] max-w-3xl flex-col justify-center py-5">
+                  <div className="mb-5 flex items-start gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-navy text-brass-soft"><Sparkles aria-hidden="true" className="h-4 w-4" /></span>
+                    <div className="max-w-2xl rounded-2xl rounded-tl-sm border border-navy/5 bg-white px-4 py-3.5 shadow-sm">
+                      <p className="font-semibold">Start with a question about road safety in this region.</p>
+                      <p className="mt-1 text-sm leading-relaxed text-navy/65">{chip ? 'I can help interpret the attached report and turn findings into next steps.' : 'Attach a Region Report for tailored recommendations, or ask a general question to get started.'}</p>
+                    </div>
+                  </div>
+                  <p className="mb-2 pl-12 text-xs font-bold uppercase tracking-[0.14em] text-navy/45">Suggested questions</p>
+                  <div className="flex flex-wrap gap-2 pl-12">
+                    {role && ROLE_INFO[role].starters.map((s) => (
+                      <button key={s} type="button" disabled={busy} onClick={() => void send(s)} className="rounded-full border border-navy/15 bg-white px-3.5 py-2 text-left text-xs font-semibold text-navy/80 shadow-sm transition hover:border-brass/60 hover:bg-brass/5 hover:text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass disabled:opacity-50 sm:text-sm">
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {msgs.map((m) => (
+                <div key={m.key} className={`flex gap-3 ${m.author === 'user' ? 'justify-end' : 'items-start'}`}>
+                  {m.author === 'assistant' && <span aria-hidden="true" className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-navy text-brass-soft"><Sparkles className="h-4 w-4" /></span>}
+                  <div className={`min-w-0 max-w-[min(90%,48rem)] rounded-2xl px-4 py-3.5 shadow-sm sm:px-5 ${m.author === 'user' ? 'rounded-br-md bg-navy text-ivory' : 'rounded-tl-md border border-navy/5 bg-white text-navy'}`}>
+                    <p className="sr-only">{m.author === 'user' ? 'You said' : 'Assistant said'}</p>
+                    {m.author === 'assistant' && m.content === '' && m.streaming ? (
+                      <p className="flex items-center gap-2 text-sm text-navy/65"><span className="h-2 w-2 animate-pulse rounded-full bg-teal motion-reduce:animate-none" />Thinking through the details…</p>
+                    ) : m.author === 'assistant' ? (
+                      <Markdown text={m.content} />
+                    ) : (
+                      <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                    )}
+                    {m.note && (
+                      <p className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-brick/5 px-3 py-2 text-sm font-semibold text-brick">
+                        {m.note}
+                        {m.question && !busy && <button type="button" onClick={() => void send(m.question ?? '')} className="rounded-lg border border-brick/25 bg-white px-2.5 py-1 text-xs font-bold text-brick transition hover:bg-brick/10">Retry</button>}
+                      </p>
+                    )}
+                    {m.cards.length > 0 && (
+                      <section className="mt-5" aria-label="Recommended actions">
+                        <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-brass-700"><ShieldCheck aria-hidden="true" className="h-4 w-4" />Recommended actions</div>
+                        <p className="mb-3 text-sm text-navy/65">Review a recommendation, then add it to the regional action plan.</p>
+                        <ul className="space-y-3">
+                          {m.cards.map((c) => {
+                            const st = cards[c.card_id] ?? { state: 'idle' as const }
+                            if (st.state === 'dismissed') return null
+                            return (
+                              <li key={c.card_id}>
+                                <article aria-label={`Recommendation: ${c.title}`} className="overflow-hidden rounded-xl border border-navy/10 bg-white shadow-sm">
+                                  <div className="border-b border-navy/5 bg-ivory/70 px-4 py-3">
+                                    <h4 className="font-bold leading-snug">{c.title}</h4>
+                                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                      <span className="rounded-full bg-navy/5 px-2.5 py-1 font-semibold">{categoryLabel(fx, c.category)}</span>
+                                      <span className="rounded-full bg-teal/10 px-2.5 py-1 font-semibold text-teal">Owner: {ROLE_LABELS[c.owner_role]}</span>
+                                      {c.evidence_needed.length > 0 && <span className="rounded-full bg-brass/15 px-2.5 py-1 font-semibold text-brass-700">{c.evidence_needed.join(' + ')} photos</span>}
+                                    </div>
+                                  </div>
+                                  <div className="px-4 py-3.5">
+                                    <p className="text-sm leading-relaxed text-navy/80">{c.rationale}</p>
+                                    <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-navy/60">
+                                      <span className="font-bold uppercase tracking-wide">Cells</span>
+                                      {c.cell_ids.map((id, i) => <span key={id}>{i > 0 && <span className="mr-2 text-navy/30">·</span>}<Link to={`/map?cell=${encodeURIComponent(id)}`} className="font-mono font-semibold text-teal underline decoration-teal/30 underline-offset-4 hover:decoration-teal">{id}</Link></span>)}
+                                    </p>
+                                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                                      {st.state === 'added' ? (
+                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-teal/10 px-3 py-2 text-xs font-bold text-teal"><Check aria-hidden="true" className="h-4 w-4" />Created — opening Progress</span>
+                                      ) : user?.role === 'community' ? (
+                                        <p className="text-xs font-semibold text-navy/65">Share this recommendation with a City Planner to add it to the action plan.</p>
+                                      ) : user?.role === 'engineer' && c.owner_role !== 'engineer' ? (
+                                        <p className="text-xs font-semibold text-navy/65">A City Planner must assign this measure before it can be added.</p>
+                                      ) : (
+                                        <>
+                                          <button type="button" disabled={st.state === 'adding' || !chip} onClick={() => void addToPlan(c)} className="rounded-lg bg-navy px-3.5 py-2 text-xs font-bold text-ivory transition hover:bg-navy-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass disabled:cursor-not-allowed disabled:opacity-50">
+                                            {st.state === 'adding' ? 'Creating…' : 'Create action'}
+                                          </button>
+                                          <button type="button" onClick={() => setCard(c.card_id, { state: 'dismissed' })} className="rounded-lg px-3 py-2 text-xs font-bold text-navy/60 transition hover:bg-navy/5 hover:text-navy">Dismiss</button>
+                                        </>
+                                      )}
+                                      {st.error && <span role="alert" className="text-xs font-semibold text-brick">{st.error}</span>}
+                                    </div>
+                                  </div>
+                                </article>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </section>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <form onSubmit={submit} className="border-t border-navy/10 bg-white p-3 sm:p-4">
+            <div className="flex items-end gap-2 rounded-2xl border border-navy/15 bg-ivory/60 p-2 transition focus-within:border-brass/70 focus-within:ring-2 focus-within:ring-brass/20">
+              <label className={`relative inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-navy/65 transition hover:bg-white hover:text-navy focus-within:outline focus-within:outline-2 focus-within:outline-brass ${attaching ? 'pointer-events-none opacity-50' : ''}`}>
+                <span className="sr-only">Attach a report PDF or JSON file</span>
+                <Paperclip aria-hidden="true" className="h-5 w-5" />
+                <input type="file" accept=".pdf,.json,application/pdf,application/json" className="sr-only" disabled={attaching} onChange={(e) => { const f = e.target.files?.[0]; if (f) void attachFile(f, f.name); e.target.value = '' }} />
+              </label>
+              <label className="block min-w-0 flex-1 text-sm font-semibold">
+                <span className="sr-only">Your question</span>
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(input) } }}
+                  rows={1}
+                  maxLength={4000}
+                  placeholder={chip ? 'Ask about this report…' : 'Attach a report first, then ask…'}
+                  className="block max-h-36 min-h-10 w-full resize-y bg-transparent px-2 py-2 font-normal leading-5 text-navy placeholder:text-navy/45 focus:outline-none"
+                />
+              </label>
+              {busy ? (
+                <button type="button" onClick={() => abortRef.current?.abort()} aria-label="Stop generating" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-brick/10 px-3 text-sm font-bold text-brick transition hover:bg-brick/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick"><Square aria-hidden="true" className="h-3.5 w-3.5 fill-current" /><span className="hidden sm:inline">Stop</span></button>
+              ) : (
+                <button type="submit" disabled={!input.trim()} aria-label="Send message" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-navy px-3.5 text-sm font-bold text-ivory shadow-sm transition hover:bg-navy-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass disabled:cursor-not-allowed disabled:opacity-40"><Send aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">Send</span></button>
+              )}
+            </div>
+            <p className="mt-2 px-1 text-[11px] leading-relaxed text-navy/50 sm:text-xs">Enter to send · Shift + Enter for a new line · Suggestions are estimates for discussion; verify against the report.</p>
+          </form>
+        </Card>
+      </div>
     </div>
   )
 }

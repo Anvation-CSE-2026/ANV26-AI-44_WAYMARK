@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { BarChart3, FileDown, Sparkles } from 'lucide-react'
 import { ApiError } from '../../lib/api'
 import { opsApi, saveBlob } from '../../lib/opsApi'
 import type { RegionReport, ReportStatus, ReportSummary } from '../../lib/types.ops'
@@ -15,10 +16,10 @@ type Phase = 'idle' | 'working' | 'failed'
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-[12px] border border-navy/10 bg-white p-4 shadow-card">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-navy/60">{label}</dt>
-      <dd className="mt-1 font-serif text-3xl font-bold">{value}</dd>
-      {sub && <p className="mt-0.5 text-sm text-navy/65">{sub}</p>}
+    <div className="rounded-2xl border border-navy/10 bg-white p-4 shadow-sm transition hover:shadow-card">
+      <dt className="text-[11px] font-bold uppercase tracking-[0.14em] text-navy/55">{label}</dt>
+      <dd className="mt-1 font-serif text-3xl font-bold tracking-tight">{value}</dd>
+      {sub && <p className="mt-1 text-xs leading-relaxed text-navy/60">{sub}</p>}
     </div>
   )
 }
@@ -37,8 +38,8 @@ function ChartCard({
   color: string
 }) {
   return (
-    <Card className="p-4">
-      <h4 className="font-semibold">{title}</h4>
+    <Card className="rounded-2xl border-navy/10 p-4 shadow-sm sm:p-5">
+      <h4 className="font-serif text-lg font-bold">{title}</h4>
       <figure aria-label={`${title}. ${summary}`} className="mt-2">
         <div className="h-56 w-full" aria-hidden="true">
           <ResponsiveContainer width="100%" height="100%">
@@ -226,19 +227,22 @@ export function AnalysisTab({
   const peak = a?.hour_of_day.length ? a.hour_of_day.reduce((m, h) => (h.crashes > m.crashes ? h : m)) : null
 
   return (
-    <div className="space-y-6">
-      <div ref={actionRef} className="scroll-mt-24 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => void generate()}
-          disabled={working}
-          className="rounded-lg bg-navy px-5 py-2.5 text-lg font-semibold text-ivory hover:bg-navy-800 disabled:opacity-60"
-        >
-          {report ? 'Generate a new report' : 'Generate analysis report'}
-        </button>
-        <p role="status" aria-live="polite" className="min-h-6 font-semibold text-navy/80">
-          {working ? message : ''}
-        </p>
+    <div className="space-y-7 pb-6">
+      <div ref={actionRef} className="scroll-mt-24 flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-br from-navy via-navy to-[#263b60] px-5 py-5 text-ivory shadow-card sm:px-7 sm:py-6">
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/10 text-brass-soft"><BarChart3 aria-hidden="true" className="h-5 w-5" /></span>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brass-soft">Regional safety intelligence</p>
+            <h2 className="mt-1 font-serif text-2xl font-bold sm:text-3xl">Area analysis</h2>
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-ivory/70">Review hotspots, crash patterns, and priority issues for this region.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => void generate()} disabled={working} className="inline-flex items-center gap-2 rounded-xl bg-brass px-4 py-3 text-sm font-bold text-navy shadow-sm transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-60">
+            <Sparkles aria-hidden="true" className="h-4 w-4" />{report ? 'Generate new report' : 'Generate report'}
+          </button>
+          <p role="status" aria-live="polite" className="min-h-5 w-full text-right text-xs font-medium text-ivory/70 sm:w-auto">{working ? message : ''}</p>
+        </div>
       </div>
 
       {phase === 'failed' && failure && (
@@ -248,9 +252,9 @@ export function AnalysisTab({
       {loadingFirst && !report && <SkeletonBlock lines={5} />}
 
       {!report && !loadingFirst && phase !== 'working' && phase !== 'failed' && (
-        <Card className="p-5">
-          <p className="font-serif text-xl font-bold">No report yet for this region</p>
-          <p className="mt-1 text-navy/75">
+        <Card className="rounded-2xl border-dashed border-navy/20 bg-white/80 p-6 sm:p-8">
+          <p className="font-serif text-2xl font-bold">Your regional analysis starts here</p>
+          <p className="mt-2 max-w-2xl leading-relaxed text-navy/70">
             Generate one to see the headline index, the top hotspot cells, trends and priority issues. A PDF and a JSON
             file are produced too, and the assistant can read either.
           </p>
@@ -259,21 +263,21 @@ export function AnalysisTab({
 
       {report && a && (
         <>
-          <section ref={reportSectionRef} aria-labelledby="rep-head" className="scroll-mt-24 space-y-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
+          <section ref={reportSectionRef} aria-labelledby="rep-head" className="scroll-mt-24 space-y-5">
+            <div className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-navy/10 bg-white px-5 py-4 shadow-sm">
               <div>
                 <SectionTitle id="rep-head">Report {report.report_id}</SectionTitle>
-                <p className="text-sm text-navy/70">Generated {fmtDate(report.generated_at)}</p>
+                <p className="mt-1 text-sm text-navy/60">Generated {fmtDate(report.generated_at)}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void download(report.report_id, 'pdf')} className="rounded-lg border border-navy/25 bg-white px-4 py-2 font-semibold hover:bg-ivory-200">
-                  Download PDF
+                <button type="button" onClick={() => void download(report.report_id, 'pdf')} className="inline-flex items-center gap-2 rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm font-bold transition hover:bg-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">
+                  <FileDown aria-hidden="true" className="h-4 w-4" />PDF
                 </button>
-                <button type="button" onClick={() => void download(report.report_id, 'json')} className="rounded-lg border border-navy/25 bg-white px-4 py-2 font-semibold hover:bg-ivory-200">
-                  Download JSON
+                <button type="button" onClick={() => void download(report.report_id, 'json')} className="inline-flex items-center gap-2 rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm font-bold transition hover:bg-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">
+                  JSON
                 </button>
-                <button type="button" onClick={() => onAsk(report)} className="rounded-lg bg-brass px-4 py-2 font-semibold text-navy hover:brightness-95">
-                  Ask the assistant
+                <button type="button" onClick={() => onAsk(report)} className="inline-flex items-center gap-2 rounded-xl bg-navy px-3.5 py-2.5 text-sm font-bold text-ivory transition hover:bg-navy-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">
+                  <Sparkles aria-hidden="true" className="h-4 w-4" />Ask assistant
                 </button>
               </div>
             </div>
@@ -294,26 +298,26 @@ export function AnalysisTab({
             )}
           </section>
 
-          <section aria-labelledby="hot-head" className="space-y-2">
+          <section aria-labelledby="hot-head" className="space-y-3">
             <SectionTitle id="hot-head">Top hotspot cells</SectionTitle>
-            <Card className="sr-table-wrap">
-              <table className="w-full min-w-[34rem] text-left">
+            <Card className="sr-table-wrap rounded-2xl border-navy/10 shadow-sm">
+              <table className="w-full min-w-[38rem] text-left text-sm">
                 <caption className="sr-only">Highest-scoring cells in this region, best first</caption>
-                <thead className="bg-ivory-200/70 text-sm">
+                <thead className="bg-navy text-xs uppercase tracking-wide text-ivory/80">
                   <tr>
-                    <th scope="col" className="px-3 py-2">#</th>
-                    <th scope="col" className="px-3 py-2">Cell</th>
-                    <th scope="col" className="px-3 py-2">Score</th>
-                    <th scope="col" className="px-3 py-2">Past crashes</th>
-                    <th scope="col" className="px-3 py-2">Confidence</th>
-                    <th scope="col" className="px-3 py-2">Locality</th>
+                    <th scope="col" className="px-3 py-3">#</th>
+                    <th scope="col" className="px-3 py-3">Cell</th>
+                    <th scope="col" className="px-3 py-3">Score</th>
+                    <th scope="col" className="px-3 py-3">Past crashes</th>
+                    <th scope="col" className="px-3 py-3">Confidence</th>
+                    <th scope="col" className="px-3 py-3">Locality</th>
                   </tr>
                 </thead>
                 <tbody>
                   {a.hotspots.map((h) => (
-                    <tr key={h.cell_id} className="border-t border-navy/10">
-                      <td className="px-3 py-2">{h.rank}</td>
-                      <th scope="row" className="px-3 py-2 font-mono text-sm font-normal">
+                    <tr key={h.cell_id} className="border-t border-navy/5 transition hover:bg-ivory/70">
+                      <td className="px-3 py-3 text-navy/50">{h.rank}</td>
+                      <th scope="row" className="px-3 py-3 font-mono font-semibold">
                         <Link to={`/map?cell=${encodeURIComponent(h.cell_id)}`} className="text-teal underline-offset-2 hover:underline">
                           {h.cell_id}
                         </Link>
@@ -333,7 +337,7 @@ export function AnalysisTab({
           </section>
 
           {a.year_trend.length > 0 || a.hour_of_day.length > 0 ? (
-            <section aria-labelledby="chart-head" className="space-y-2">
+            <section aria-labelledby="chart-head" className="space-y-3">
               <SectionTitle id="chart-head">Trends</SectionTitle>
               <div className="grid gap-4 md:grid-cols-2">
                 <ChartCard
@@ -353,23 +357,23 @@ export function AnalysisTab({
               </div>
             </section>
           ) : (
-            <p className="rounded-lg bg-ivory-200 px-3 py-2 text-navy/80">Crash records are not loaded, so there are no trend charts for this region.</p>
+            <p className="rounded-xl border border-navy/10 bg-white px-4 py-3 text-sm text-navy/70">Crash records are not loaded, so there are no trend charts for this region.</p>
           )}
 
-          <section aria-labelledby="issue-head" className="space-y-2">
+          <section aria-labelledby="issue-head" className="space-y-3">
             <SectionTitle id="issue-head">Priority issues</SectionTitle>
             {a.priority_issues.length === 0 ? (
-              <p className="text-navy/75">No priority issue met the thresholds for this region.</p>
+              <p className="rounded-xl border border-dashed border-navy/15 bg-white/70 px-4 py-5 text-sm text-navy/65">No priority issue met the thresholds for this region.</p>
             ) : (
               <ul className="space-y-3">
                 {a.priority_issues.map((i) => (
                   <li key={i.id}>
-                    <Card className="p-4">
-                      <h4 className="font-semibold">{i.title}</h4>
+                    <Card className="rounded-2xl border-navy/10 p-4 shadow-sm sm:p-5">
+                      <h4 className="font-serif text-lg font-bold">{i.title}</h4>
                       {i.evidence.map((e) => (
                         <p key={e} className="mt-1 text-navy/85">{e}</p>
                       ))}
-                      <p className="mt-2 text-sm text-navy/65">
+                      <p className="mt-3 border-t border-navy/5 pt-3 text-sm text-navy/65">
                         Cells:{' '}
                         {i.cell_ids.slice(0, 5).map((c, k) => (
                           <span key={c}>
@@ -386,9 +390,9 @@ export function AnalysisTab({
             )}
           </section>
 
-          <section aria-labelledby="cav-head" className="space-y-2">
+          <section aria-labelledby="cav-head" className="space-y-3">
             <SectionTitle id="cav-head">Caveats</SectionTitle>
-            <ul className="list-disc space-y-1 pl-5 text-navy/85">
+            <ul className="rounded-2xl border border-amber/25 bg-amber/5 p-4 pl-9 text-sm leading-relaxed text-navy/80">
               {a.caveats.map((c) => (
                 <li key={c}>{c}</li>
               ))}

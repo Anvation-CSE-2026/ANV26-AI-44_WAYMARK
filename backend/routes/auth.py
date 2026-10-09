@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..auth import ROLE_LABELS, Role, User, _load_users, authenticate, create_token, hash_password
+from ..auth import ROLE_LABELS, Role, User, _load_users, authenticate, create_token, current_user, hash_password, verify_password
 from ..config import settings
 from ..db import get_db
 from ..models_ops import Account
-from ..schemas_ops import DemoIn, LoginIn, SignupIn, TokenOut, UserOut
+from ..schemas_ops import (ChangePasswordIn, DemoIn, LoginIn, PasswordChangedOut, ProfileUpdateIn, SignupIn,
+                           TokenOut, UserOut)
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -23,6 +24,43 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
     if user is None:
         raise HTTPException(401, "Wrong username or password.")
     return _token_out(user)
+
+
+def _account_for_user(user: User, db: Session) -> Account:
+    account = db.get(Account, user.id)
+    if account is None:
+        raise HTTPException(403, "Demo accounts do not have a persistent profile.")
+    return account
+
+
+@router.get("/auth/me", response_model=UserOut)
+def get_profile(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    account = _account_for_user(user, db)
+    return UserOut(id=account.id, name=account.name, role=Role(account.role))
+
+
+@router.patch("/auth/profile", response_model=UserOut)
+def update_profile(body: ProfileUpdateIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    account = _account_for_user(user, db)
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(422, "Name cannot be empty.")
+    account.name = name
+    db.commit()
+    return UserOut(id=account.id, name=account.name, role=Role(account.role))
+
+
+@router.post("/auth/change-password", response_model=PasswordChangedOut)
+def change_password(body: ChangePasswordIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    account = _account_for_user(user, db)
+    if not verify_password(body.current_password, account.password_hash):
+        raise HTTPException(400, "Current password is incorrect.")
+    if body.current_password == body.new_password:
+        raise HTTPException(422, "Choose a new password different from your current password.")
+    account.password_hash = hash_password(body.new_password)
+    account.session_version = int(account.session_version or 0) + 1
+    db.commit()
+    return PasswordChangedOut(message="Password changed. Sign in again.")
 
 
 @router.post("/auth/signup", response_model=TokenOut, status_code=201)

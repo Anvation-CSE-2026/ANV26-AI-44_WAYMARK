@@ -1,6 +1,6 @@
 """JWT auth, configured demo accounts, registered accounts and auth dependencies.
 
-Demo accounts live in backend/config/demo_users.json; registered accounts use the SQLite accounts table.
+Demo accounts live in backend/config/demo_users.json; registered accounts use the accounts table.
 Passwords are PBKDF2 hashes generated with stdlib hashlib.
 """
 from __future__ import annotations
@@ -23,6 +23,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from .config import settings
+from .db import get_db
 from .models_ops import Account
 
 USERS_PATH = Path(__file__).resolve().parent / "config" / "demo_users.json"
@@ -37,7 +38,7 @@ class Role(str, Enum):
 
 
 ROLE_LABELS = {
-    Role.planner: "City Planner",
+    Role.planner: "City Planners",
     Role.engineer: "Road Authorities",
     Role.community: "Traffic Police",
 }
@@ -48,6 +49,7 @@ class User:
     id: str
     name: str
     role: Role
+    session_version: int = 0
 
 
 # ------------------------------------------------------------------ passwords
@@ -88,13 +90,15 @@ def authenticate(username: str, password: str, db: Session | None = None) -> Use
         return None
     if row:
         return User(id=row["username"], name=row["name"], role=Role(row["role"]))
-    return User(id=account.id, name=account.name, role=Role(account.role))
+    return User(id=account.id, name=account.name, role=Role(account.role),
+                session_version=int(account.session_version or 0))
 
 
 # ------------------------------------------------------------------ tokens
 def create_token(user: User) -> str:
     now = int(time.time())
     claims = {"sub": user.id, "role": user.role.value, "name": user.name,
+              "sv": user.session_version,
               "iat": now, "exp": now + settings.jwt_ttl_min * 60}
     return jwt.encode(claims, settings.jwt_secret, algorithm=ALGORITHM)
 
@@ -102,7 +106,8 @@ def create_token(user: User) -> str:
 def decode_token(token: str) -> User:
     try:
         claims = jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM], options={"require": ["exp", "sub", "role"]})
-        return User(id=str(claims["sub"]), name=str(claims.get("name") or claims["sub"]), role=Role(claims["role"]))
+        return User(id=str(claims["sub"]), name=str(claims.get("name") or claims["sub"]),
+                    role=Role(claims["role"]), session_version=int(claims.get("sv", 0)))
     except (jwt.PyJWTError, ValueError):
         raise HTTPException(401, "Your session is missing or has expired. Please sign in again.",
                             headers={"WWW-Authenticate": "Bearer"}) from None
@@ -112,10 +117,20 @@ def decode_token(token: str) -> User:
 _bearer = HTTPBearer(auto_error=False)
 
 
-def current_user(creds: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> User:
+def current_user(creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
+                 db: Session = Depends(get_db)) -> User:
     if creds is None or not creds.credentials:
         raise HTTPException(401, "Sign in to use this feature.", headers={"WWW-Authenticate": "Bearer"})
-    return decode_token(creds.credentials)
+    user = decode_token(creds.credentials)
+    # Demo accounts are configured in code and have no persistent row to version.
+    if user.id.startswith("demo-") or user.id in _load_users():
+        return user
+    account = db.get(Account, user.id)
+    if account is None or int(account.session_version or 0) != user.session_version:
+        raise HTTPException(401, "Your session has been revoked. Please sign in again.",
+                            headers={"WWW-Authenticate": "Bearer"})
+    return User(id=account.id, name=account.name, role=Role(account.role),
+                session_version=int(account.session_version or 0))
 
 
 def require_role(*roles: Role) -> Callable[[User], User]:
