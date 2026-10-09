@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .localities import find_locality
 from .models import Cell, Crash, DataQuality, YearlyCount
+from .models_ops import IncidentReport
 from .schemas_ops import (Bounds, HotspotCell, HourCount, PriorityIssue, Region, RegionAnalysis, YearCount)
 from .services import maps_url
 
@@ -212,6 +213,18 @@ def _quality_caveats(db: Session) -> list[str]:
     return [f"Data-quality {status}: {name}" + (f" ({detail})" if detail else "") for name, status, detail in rows[:4]]
 
 
+def _incident_counts(db: Session, cell_ids: list[str]) -> tuple[int, int]:
+    if not inspect(db.get_bind()).has_table(IncidentReport.__tablename__) or not cell_ids:
+        return 0, 0
+    rows = db.execute(
+        select(IncidentReport.status, func.count())
+        .where(IncidentReport.cell_id.in_(cell_ids), IncidentReport.status.in_(("pending", "confirmed")))
+        .group_by(IncidentReport.status)
+    ).all()
+    counts = {status: int(count) for status, count in rows}
+    return counts.get("pending", 0), counts.get("confirmed", 0)
+
+
 def analyse_region(db: Session, resolved: ResolvedRegion) -> RegionAnalysis:
     cells = _cells_by_ids(db, resolved.cell_ids)
     region = resolved.region
@@ -220,6 +233,7 @@ def analyse_region(db: Session, resolved: ResolvedRegion) -> RegionAnalysis:
                                           -c.n_past_crashes, c.cell_id))
     has_crashes = _has_crashes(db)
     agg = _crash_aggregates(db, [c.cell_id for c in cells]) if has_crashes else None
+    incident_pending, incident_confirmed = _incident_counts(db, [c.cell_id for c in cells])
 
     hotspots: list[HotspotCell] = []
     for i, c in enumerate(ranked[:TOP_HOTSPOTS], start=1):
@@ -242,6 +256,9 @@ def analyse_region(db: Session, resolved: ResolvedRegion) -> RegionAnalysis:
     if not has_crashes:
         caveats.append("Crash records are not loaded in this database, so the trend, hour-of-day and street details are "
                        "unavailable. Run pipeline/load_crashes.py to enable them.")
+    if incident_pending or incident_confirmed:
+        caveats.append(f"Traffic Police incident activity: {incident_pending} pending and {incident_confirmed} confirmed "
+                       "report(s). These operational reports are separate from the historical crash score.")
     low_conf = sum(1 for c in cells if c.confidence == "Low")
     if cells and low_conf / len(cells) >= 0.5:
         caveats.append(f"{low_conf} of {len(cells)} cells have Low confidence (few past crashes); treat their scores "
@@ -254,6 +271,7 @@ def analyse_region(db: Session, resolved: ResolvedRegion) -> RegionAnalysis:
         total_crashes=agg["total"] if agg else None, emerging_cells=len(emerging),
         night_share=None if not agg or agg["night_share"] is None else round(agg["night_share"], 4),
         severe_share=None if not agg or agg["severe_share"] is None else round(agg["severe_share"], 4),
+        incident_pending_count=incident_pending, incident_confirmed_count=incident_confirmed,
         hotspots=hotspots, year_trend=year_trend, hour_of_day=hour_of_day,
         priority_issues=issues, caveats=caveats)
 

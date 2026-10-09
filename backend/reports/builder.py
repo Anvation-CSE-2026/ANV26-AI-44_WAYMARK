@@ -135,6 +135,10 @@ def render_pdf(report: RegionReport, path: Path) -> None:
         if a.severe_share is not None:
             bits.append(f"Severity 3 or higher: {a.severe_share * 100:.0f}%")
         story.append(_p(" · ".join(bits), small))
+    if a.incident_pending_count or a.incident_confirmed_count:
+        story += [_p("Incident activity", h2),
+                  _p(f"Traffic Police reports: {a.incident_pending_count} pending and {a.incident_confirmed_count} confirmed. "
+                     "These operational reports are separate from the historical crash score.", body)]
 
     story.append(_p("Top hotspot cells", h2))
     rows = [[Paragraph(f"<b>{h}</b>", cell) for h in ("#", "Cell", "Score", "Past crashes", "Confidence", "Locality")]]

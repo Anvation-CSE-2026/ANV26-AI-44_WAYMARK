@@ -465,7 +465,7 @@ export function AssistantTab({
                   rows={1}
                   maxLength={4000}
                   placeholder={chip ? 'Ask about this report…' : 'Attach a report first, then ask…'}
-                  className="block max-h-36 min-h-10 w-full resize-y bg-transparent px-2 py-2 font-normal leading-5 text-navy placeholder:text-navy/45 focus:outline-none"
+                  className="block max-h-36 min-h-10 w-full resize-y bg-transparent px-2 py-2 text-xs font-normal leading-5 text-navy placeholder:text-navy/45 focus:outline-none"
                 />
               </label>
               {busy ? (

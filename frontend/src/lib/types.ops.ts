@@ -106,6 +106,8 @@ export interface RegionAnalysis {
   emerging_cells: number
   night_share: number | null
   severe_share: number | null
+  incident_pending_count: number
+  incident_confirmed_count: number
   hotspots: HotspotCell[]
   year_trend: YearCount[]
   hour_of_day: HourCount[]

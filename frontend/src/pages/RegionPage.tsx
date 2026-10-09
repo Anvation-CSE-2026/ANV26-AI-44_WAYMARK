@@ -283,7 +283,7 @@ export default function RegionPage() {
                 tabIndex={-1}
                 onKeyDown={onAssistantKeyDown}
                 onMouseDown={(e) => { if (chatExpanded && e.target === e.currentTarget) closeAssistant() }}
-                className={`${chatOpen ? 'flex' : 'hidden'} fixed z-[1700] flex-col bg-navy/45 p-0 sm:p-4 ${chatExpanded ? 'inset-0 items-center justify-center' : 'inset-0 sm:inset-auto sm:bottom-4 sm:right-4 sm:h-[min(44rem,calc(100dvh-2rem))] sm:w-[min(27rem,calc(100vw-2rem))]'}`}
+                className={`${chatOpen ? 'flex' : 'hidden'} fixed z-[1700] flex-col bg-navy/45 p-0 outline-none sm:p-4 ${chatExpanded ? 'inset-0 items-center justify-center' : 'inset-0 sm:inset-auto sm:bottom-4 sm:right-4 sm:h-[min(44rem,calc(100dvh-2rem))] sm:w-[min(27rem,calc(100vw-2rem))]'}`}
               >
                 <section className={`flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-white shadow-[0_16px_56px_rgba(18,32,59,0.3)] ${chatExpanded ? 'sm:h-[min(92dvh,58rem)] sm:max-w-6xl sm:rounded-2xl' : 'sm:rounded-2xl'}`}>
                   <header className="flex shrink-0 items-center justify-between gap-3 bg-navy px-4 py-3 text-ivory">

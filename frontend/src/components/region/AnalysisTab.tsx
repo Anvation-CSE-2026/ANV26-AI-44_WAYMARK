@@ -295,6 +295,12 @@ export function AnalysisTab({
               <Stat label="Past crashes" value={a.total_crashes === null ? 'n/a' : a.total_crashes.toLocaleString('en-US')} sub={a.total_crashes === null ? 'crash records not loaded' : undefined} />
               <Stat label="Emerging-risk cells" value={a.emerging_cells.toLocaleString('en-US')} sub="elevated risk, little history" />
             </dl>
+            {(a.incident_pending_count > 0 || a.incident_confirmed_count > 0) && (
+              <p className="rounded-xl border border-teal/20 bg-teal/5 px-4 py-3 text-sm text-navy/80">
+                Traffic Police reports: <strong>{a.incident_pending_count} pending</strong> and <strong>{a.incident_confirmed_count} confirmed</strong>.
+                <span className="text-navy/60"> These are operational reports and do not change the historical crash score.</span>
+              </p>
+            )}
             {(a.night_share !== null || a.severe_share !== null) && (
               <p className="text-navy/80">
                 {a.night_share !== null && <>Night-time crashes: <strong>{Math.round(a.night_share * 100)}%</strong>. </>}

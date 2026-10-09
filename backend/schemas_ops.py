@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from .auth import Role
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
 ESTIMATE_NOTE = ("These are estimates from historical crash records, not predictions. The adjusted index is an "
                  "overlay estimate, not a re-run of the risk model.")
 
@@ -134,6 +134,8 @@ class RegionAnalysis(BaseModel):
     emerging_cells: int
     night_share: Optional[float]
     severe_share: Optional[float]
+    incident_pending_count: int = 0
+    incident_confirmed_count: int = 0
     hotspots: list[HotspotCell]
     year_trend: list[YearCount]
     hour_of_day: list[HourCount]
