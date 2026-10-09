@@ -94,7 +94,7 @@ def _stream_groq(*, role: Role, digest: Optional[dict], history: list[tuple[str,
             "description": tool["description"],
             "parameters": tool["input_schema"],
         }}]
-        payload["tool_choice"] = "required"
+        payload["tool_choice"] = "auto"
 
     tool_calls: dict[int, dict[str, str]] = {}
     try:
@@ -161,7 +161,7 @@ def _stream_anthropic(*, role: Role, digest: Optional[dict], history: list[tuple
                                   messages=build_messages(digest, history, question))
     if digest is not None:
         kwargs["tools"] = [propose_tool()]
-        kwargs["tool_choice"] = {"type": "tool", "name": "propose_measures"}
+        kwargs["tool_choice"] = {"type": "auto"}
     result = LLMResult()
     try:
         with client.messages.stream(**kwargs) as stream:
@@ -189,8 +189,8 @@ def propose_tool() -> dict:
     cats = get_effects().categories
     return {
         "name": "propose_measures",
-        "description": "Required: propose 1–3 useful road-safety actions for the attached region report. Call this once "
-                       "for every reply when a report is attached. Tie each action to valid report cells and choose a "
+        "description": "Optional: propose 1–3 useful road-safety actions when the user asks for recommendations or next steps. "
+                       "Tie each action to valid report cells and choose a "
                        "category and owner allowed by the schema.",
         "input_schema": {
             "type": "object",

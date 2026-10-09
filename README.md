@@ -6,6 +6,8 @@
 
 Identify locations that may merit earlier investigation, including places with limited crash history. Review the signals, discuss recommendations, and track evidence through a human-reviewed action plan.
 
+**Live app:** [https://waymark-frontend.onrender.com/](https://waymark-frontend.onrender.com/)
+
 ![React](https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
@@ -15,7 +17,7 @@ Identify locations that may merit earlier investigation, including places with l
 
 </div>
 
-> Decision support only. Human experts decide. Risk scores are estimates from historical records.
+> Decision support only. Human experts decide. Risk scores are estimates from historical records, not predictions or engineering findings.
 
 ## At a glance
 

@@ -342,17 +342,29 @@ export function mockStream(path: string, json: unknown, signal?: AbortSignal): A
   if (!m) return null
   const s = sessions.get(decodeURIComponent(m[1]))
   const text = String((json as { text?: string })?.text ?? '')
+  const normalized = text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ')
+  const actionRequest = /recommend|suggest|what should|what can we do|what do we do|next step|action|measure|intervention|prioriti|audit first|fix first|implement/.test(normalized)
+  const greeting = /^(hi|hello|hey|good morning|good afternoon|good evening|thanks|thank you)( there)?\s*$/.test(normalized.trim())
   return (async function* () {
     yield { type: 'start', session_id: decodeURIComponent(m[1]) } as ChatEvent
+    const a = s?.report?.analysis
     const words = !s?.report
-      ? 'Attach a WAYMARK Region Report and I can suggest measures for it. Until then I cannot give recommendation cards.'
-      : `Here is how I would start, based on report ${s.report.report_id} (mock assistant; you asked: "${text.slice(0, 80)}"). The top-ranked hotspot cells hold much of the region's crash history, so a site audit there comes first. The cards below are rule-based examples.`
+      ? 'Attach a WAYMARK Region Report and I can answer questions about its findings.'
+      : greeting
+        ? `Hi! I can answer questions about the ${a!.region.name} report, such as its risk score, hotspots, or limitations. What would you like to know?`
+        : actionRequest
+          ? `Based on report ${s.report.report_id}, I found some relevant next steps. Review the action cards below before adding them to the plan.`
+          : normalized.includes('risk index') || normalized.includes('risk score')
+            ? `The ${a!.region.name} report's risk index is ${a!.risk_index} across ${a!.region.cell_count} scored cells. Risk scores are historical estimates, not predictions.`
+            : normalized.includes('hotspot') || normalized.includes('highest risk')
+              ? `The report ranks ${a!.hotspots.slice(0, 3).map((h) => `${h.locality || h.cell_id} (${h.n_past_crashes} past crashes)`).join('; ')} as its top hotspots.`
+              : `I can answer questions using the attached ${a!.region.name} report. Try asking about its risk index, top hotspots, crash patterns, or limitations.`
     for (const w of words.split(/(?<=\s)/)) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
       yield { type: 'token', text: w }
       await new Promise((r) => setTimeout(r, 25))
     }
-    if (s?.report) {
+    if (s?.report && actionRequest) {
       const owners = s.role === 'engineer' ? ['engineer'] : s.role === 'community' ? ['community', 'planner'] : ['planner', 'engineer', 'community']
       for (const t of cardsFx as Array<{ title: string; category: string; owner_role: RoleId; hotspots: number[]; rationale: string; evidence_needed: EvidenceKind[] }>) {
         const ids = t.hotspots.map((i) => s.report!.analysis.hotspots[i]?.cell_id).filter(Boolean) as string[]

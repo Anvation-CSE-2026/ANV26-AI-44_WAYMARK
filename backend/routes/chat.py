@@ -23,7 +23,7 @@ from ..db import get_db
 from ..models_ops import ChatMessage as MessageRow, ChatSession as SessionRow, Report, utcnow
 from ..ops_common import api_error, iso_req
 from ..permissions import require_permission
-from ..playbooks import fallback_reply, report_digest, rule_based_cards
+from ..playbooks import fallback_reply, report_digest, requests_actions, rule_based_cards
 from ..reports.builder import ATTACHMENT_NAME
 from ..schemas_ops import (SCHEMA_VERSION, CardEvent, ChatHistory, ChatMessage, ChatSessionCreate, ChatSessionOut,
                            DoneEvent, ErrorEvent, MessageIn, RecommendationCard, RegionReport, ReportChip, StartEvent,
@@ -195,8 +195,11 @@ def run_turn(engine, session_id: str, role: Role, report: Optional[RegionReport]
              question: str) -> Iterator[tuple[str, object]]:
     """Core of one assistant turn. Yields ("token", str), ("card", RecommendationCard), then ("done", (text, cards, fallback))."""
     if report is None:
-        yield from (("token", c) for c in _chunks(NO_REPORT_REPLY))
-        yield "done", (NO_REPORT_REPLY, [], False)
+        reply = ("Hi! Attach a WAYMARK Region Report and I can answer questions about its findings."
+                 if re.fullmatch(r"(?:hi|hello|hey|good morning|good afternoon|good evening)[!. ]*", question.strip(), re.I)
+                 else NO_REPORT_REPLY)
+        yield from (("token", c) for c in _chunks(reply))
+        yield "done", (reply, [], False)
         return
     digest = report_digest(report)
     text, cards, fallback = "", [], False
@@ -211,16 +214,19 @@ def run_turn(engine, session_id: str, role: Role, report: Optional[RegionReport]
             else:
                 result = payload
         cards = llm.validate_cards(result.raw_cards, digest, role) if result else []
-        if not result or not result.used_tool or not cards:
-            raise llm.LLMError("the model did not return a valid action card")
+        if not result:
+            raise llm.LLMError("the model returned no response")
         if not text.strip():
-            text = "### Summary\nI reviewed the attached region report.\n\n### Recommended actions\nChoose an action card below to add it to the plan."
+            if cards:
+                text = "I found report-backed actions that may help. Review the cards below before adding them to the plan."
+            else:
+                raise llm.LLMError("the model returned an empty reply")
         yield from (("token", c) for c in _chunks(text.strip()))
     except llm.LLMError as e:
         log.info("assistant fallback: %s", e)
         fallback = True
-        cards = rule_based_cards(report, role)
-        reply = fallback_reply(report, role, cards)
+        cards = rule_based_cards(report, role) if requests_actions(question) else []
+        reply = fallback_reply(report, role, cards, question)
         yield from (("token", c) for c in _chunks(reply))
         text = reply
     for c in cards:
