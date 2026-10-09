@@ -366,8 +366,8 @@ export default function MapPage() {
       <div className="absolute right-2 top-14 z-[1060] flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-2 md:right-4 md:top-4">
         {isTrafficPolice && <button type="button" onClick={() => setPickIncidentMode((v) => !v)} aria-pressed={pickIncidentMode}
           aria-label={pickIncidentMode ? 'Cancel incident location selection' : 'Report a crash or near miss'}
-          className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold shadow-card ${pickIncidentMode ? 'bg-brass text-navy' : 'bg-navy text-ivory'}`}>
-          <MapPin aria-hidden="true" className="h-4 w-4" /> {pickIncidentMode ? 'Cancel report' : 'Report incident'}
+          className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow-card md:min-h-9 sm:text-sm ${pickIncidentMode ? 'bg-brass text-navy' : 'bg-navy text-ivory'}`}>
+          <MapPin aria-hidden="true" className="h-3.5 w-3.5" /> {pickIncidentMode ? 'Cancel report' : 'Report incident'}
         </button>}
         {region ? (
           <button
