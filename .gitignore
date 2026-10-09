@@ -1,5 +1,5 @@
 # runtime files (evidence photos, report PDFs): created at start-up, never committed
-data/
+/data/
 .venv/
 __pycache__/
 *.pyc
