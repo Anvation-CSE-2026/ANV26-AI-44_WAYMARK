@@ -511,7 +511,7 @@ export default function MapPage() {
 
       {/* Loading / error / empty states */}
       {cellsQ.loading && (
-        <div className="pointer-events-none absolute left-1/2 top-16 z-[1100] -translate-x-1/2 rounded-xl border border-navy/10 bg-white/95 px-4 py-2 shadow-card" role="status" aria-live="polite">
+        <div className="pointer-events-none absolute left-1/2 top-24 z-[1100] -translate-x-1/2 rounded-xl border border-navy/10 bg-white/95 px-4 py-2 shadow-card md:top-16" role="status" aria-live="polite">
           <span className="inline-flex items-center gap-2 text-sm font-semibold text-navy"><span aria-hidden="true" className="h-2.5 w-2.5 animate-pulse rounded-full bg-brass" />Loading map cells…</span>
         </div>
       )}

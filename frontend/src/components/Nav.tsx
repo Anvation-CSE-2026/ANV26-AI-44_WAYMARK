@@ -39,7 +39,7 @@ function Account() {
   }, [open])
 
   if (!user) {
-    return <span className="ml-auto shrink-0 text-sm text-ivory/70">Not signed in</span>
+    return <Link to="/auth" className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg bg-brass px-4 text-sm font-semibold text-navy transition hover:bg-brass-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">Sign in</Link>
   }
   const initials = user.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toLocaleUpperCase() || <UserRound aria-hidden="true" className="h-5 w-5" />
   return (
@@ -86,7 +86,7 @@ export function Nav() {
         <button type="button" className="order-first grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-white/25 text-xl lg:hidden" aria-expanded={menuOpen} aria-controls="mobile-primary-nav" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} onClick={() => setMenuOpen((v) => !v)}>
           <span aria-hidden="true">{menuOpen ? '×' : '☰'}</span>
         </button>
-        <Link to="/" aria-label="WAYMARK home" className="absolute left-1/2 shrink-0 -translate-x-1/2 lg:static lg:transform-none">
+        <Link to="/" aria-label="WAYMARK home" className="absolute left-1/2 inline-flex min-w-max shrink-0 -translate-x-1/2 lg:static lg:transform-none">
           <Logo tone="dark" />
         </Link>
         <nav aria-label="Primary" className="ml-auto hidden min-w-0 gap-1 overflow-x-auto lg:flex lg:absolute lg:left-1/2 lg:ml-0 lg:-translate-x-1/2">
