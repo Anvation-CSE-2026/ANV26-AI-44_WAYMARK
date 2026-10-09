@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/auth'
 import { LogOut, Settings, UserRound } from 'lucide-react'
+import { ROLE_LABELS } from '../lib/types.ops'
 import { Logo } from './Logo'
 
 const links = [
@@ -42,7 +43,7 @@ function Account() {
   }
   const initials = user.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toLocaleUpperCase() || <UserRound aria-hidden="true" className="h-5 w-5" />
   return (
-    <div ref={accountRef} className="relative ml-auto shrink-0 border-l border-white/20 pl-3">
+    <div ref={accountRef} className="relative ml-auto shrink-0">
       <button
         ref={triggerRef}
         type="button"
@@ -56,7 +57,10 @@ function Account() {
       </button>
       {open && (
         <div id="account-menu" role="group" aria-label="Account options" className="absolute right-0 top-full z-[1300] mt-2 w-56 rounded-xl border border-navy/10 bg-white p-2 text-navy shadow-lift">
-          <p className="truncate px-3 py-2 text-sm font-semibold" title={user.name}>{user.name}</p>
+          <div className="px-3 py-2">
+            <p className="truncate text-sm font-semibold" title={user.name}>{user.name}</p>
+            <p className="mt-0.5 truncate text-xs text-navy/65">{ROLE_LABELS[user.role]}</p>
+          </div>
           <div className="my-1 border-t border-navy/10" />
           <Link to="/settings" onClick={() => setOpen(false)} className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-navy/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brass">
             <Settings aria-hidden="true" className="h-4 w-4" /> Settings

@@ -62,11 +62,13 @@ export function AssistantTab({
   regionKey,
   attachReport,
   onAddedToPlan,
+  embedded = false,
 }: {
   kind: string
   regionKey: string
   attachReport: RegionReport | null
   onAddedToPlan: (title: string) => void
+  embedded?: boolean
 }) {
   const { user } = useAuth()
   const fx = useEffects()
@@ -248,15 +250,15 @@ export function AssistantTab({
   // ------------------------------------------------------------------ session startup
   if (!session) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center py-6 sm:py-10">
-        <div className="mb-7 flex items-center gap-3">
+      <div className={`mx-auto flex w-full flex-1 flex-col justify-center ${embedded ? 'min-h-0 p-4' : 'max-w-5xl py-6 sm:py-10'}`}>
+        {!embedded && <div className="mb-7 flex items-center gap-3">
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-navy text-brass shadow-card"><Sparkles aria-hidden="true" className="h-6 w-6" /></span>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brass-700">WAYMARK assistant</p>
             <h2 className="font-serif text-3xl font-bold tracking-tight sm:text-4xl">How can I help?</h2>
           </div>
-        </div>
-        <p className="mb-6 max-w-2xl leading-relaxed text-navy/70">Preparing your workspace{role ? ` for ${ROLE_LABELS[role]}` : ''}.</p>
+        </div>}
+        <p className="mb-4 max-w-2xl leading-relaxed text-sm text-navy/70">Preparing your workspace{role ? ` for ${ROLE_LABELS[role]}` : ''}.</p>
         {attachReport && (
           <p role="note" className="mb-5 flex items-center gap-2 rounded-xl border border-brass/30 bg-brass/10 px-4 py-3 text-sm font-semibold text-navy">
             <FileText aria-hidden="true" className="h-4 w-4 shrink-0 text-brass-700" />
@@ -270,8 +272,8 @@ export function AssistantTab({
   }
 
   return (
-    <div className="flex min-h-[32rem] flex-1 flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-navy px-4 py-4 text-ivory shadow-card sm:px-6">
+    <div className={`flex w-full flex-1 flex-col ${embedded ? 'min-h-0' : 'min-h-[32rem] gap-4'}`}>
+      {!embedded && <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-navy px-4 py-4 text-ivory shadow-card sm:px-6">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-brass-soft ring-1 ring-white/15"><Sparkles aria-hidden="true" className="h-5 w-5" /></span>
           <div>
@@ -282,7 +284,7 @@ export function AssistantTab({
         <div className="flex items-center gap-2">
           <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-ivory sm:text-sm">{role && ROLE_LABELS[role]}</span>
         </div>
-      </div>
+      </div>}
 
       {anyFallback && (
         <div role="status" className="flex items-center gap-2 rounded-xl border border-amber/50 bg-amber/10 px-4 py-3 text-sm font-semibold text-[#6b4210]">
@@ -300,10 +302,10 @@ export function AssistantTab({
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false)
         }}
         onDrop={onDrop}
-        className={`relative flex min-h-[30rem] flex-1 flex-col rounded-2xl transition-shadow ${dragging ? 'ring-2 ring-brass ring-offset-2' : ''}`}
+        className={`relative flex min-h-0 flex-1 flex-col rounded-2xl transition-shadow ${!embedded ? 'min-h-[30rem]' : ''} ${dragging ? 'ring-2 ring-brass ring-offset-2' : ''}`}
       >
         <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-navy/10 shadow-card">
-          <div className="border-b border-navy/10 bg-white px-4 py-4 sm:px-6">
+          <div className="border-b border-navy/10 bg-white px-3 py-3 sm:px-4">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               {chip ? (
                 <>
@@ -353,9 +355,9 @@ export function AssistantTab({
 
           <div className="relative flex min-h-0 flex-1 flex-col bg-[#f8f6f1]">
             {dragging && <p className="absolute inset-x-4 top-4 z-10 rounded-xl border border-dashed border-brass bg-white/95 px-4 py-3 text-center text-sm font-bold text-navy shadow-card">Drop the report here to attach it</p>}
-            <div ref={listRef} aria-live="polite" aria-label="Conversation" role="log" className="min-h-[18rem] flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+            <div ref={listRef} aria-live="polite" aria-label="Conversation" role="log" className={`${embedded ? 'min-h-0' : 'min-h-[18rem]'} flex-1 space-y-5 overflow-y-auto p-3 sm:p-4`}>
               {msgs.length === 0 && (
-                <div className="mx-auto flex min-h-[17rem] max-w-3xl flex-col justify-center py-5">
+                <div className={`mx-auto flex max-w-3xl flex-col justify-center py-4 ${embedded ? 'min-h-0' : 'min-h-[17rem]'}`}>
                   <div className="mb-5 flex items-start gap-3">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-navy text-brass-soft"><Sparkles aria-hidden="true" className="h-4 w-4" /></span>
                     <div className="max-w-2xl rounded-2xl rounded-tl-sm border border-navy/5 bg-white px-4 py-3.5 shadow-sm">
@@ -472,7 +474,7 @@ export function AssistantTab({
                 <button type="submit" disabled={!input.trim()} aria-label="Send message" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-navy px-3.5 text-sm font-bold text-ivory shadow-sm transition hover:bg-navy-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass disabled:cursor-not-allowed disabled:opacity-40"><Send aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">Send</span></button>
               )}
             </div>
-            <p className="mt-2 px-1 text-[11px] leading-relaxed text-navy/50 sm:text-xs">Enter to send · Shift + Enter for a new line · Suggestions are estimates for discussion; verify against the report.</p>
+            {!embedded && <p className="mt-2 px-1 text-[11px] leading-relaxed text-navy/50 sm:text-xs">Enter to send · Shift + Enter for a new line · Suggestions are estimates for discussion; verify against the report.</p>}
           </form>
         </Card>
       </div>

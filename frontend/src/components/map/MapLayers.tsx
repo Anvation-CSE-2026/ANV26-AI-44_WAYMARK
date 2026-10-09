@@ -12,6 +12,33 @@ const DIM_FACTOR = 0.7
 
 /** Points (cell centres) appear from this zoom level. */
 const POINT_ZOOM = 15
+const CRASH_TILE_DEGREES = 0.05
+
+// Keep crash tiles in memory as users pan and zoom. Re-requesting the same fixed
+// geographic tile is unnecessary, and nearby views commonly overlap.
+const crashTileCache = new Map<string, Promise<{ available: boolean; items: CrashPoint[] }>>()
+function loadCrashTile(latIndex: number, lngIndex: number, signal: AbortSignal) {
+  const key = `${latIndex}:${lngIndex}`
+  let pending = crashTileCache.get(key)
+  if (!pending) {
+    const south = latIndex * CRASH_TILE_DEGREES
+    const west = lngIndex * CRASH_TILE_DEGREES
+    const bbox = [south, west, south + CRASH_TILE_DEGREES, west + CRASH_TILE_DEGREES].map((n) => n.toFixed(6)).join(',')
+    pending = api.crashes(bbox)
+      .then((result) => ({ available: result.available, items: result.items }))
+      .catch((error: unknown) => {
+        crashTileCache.delete(key)
+        throw error
+      })
+    crashTileCache.set(key, pending)
+    // Bound this session cache so long map sessions do not retain unlimited points.
+    if (crashTileCache.size > 160) crashTileCache.delete(crashTileCache.keys().next().value!)
+  }
+  return Promise.race([
+    pending,
+    new Promise<never>((_, reject) => signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })),
+  ])
+}
 
 /** H3 resolution to draw at a given zoom: coarse hexagons far out, the native cells close in. */
 function resolutionForZoom(zoom: number, native: number): number {
@@ -115,8 +142,15 @@ export function HexLayer({
   }, [onSelect, onPickRegion])
 
   const [view, setView] = useState(() => ({ zoom: map.getZoom(), bounds: map.getBounds() }))
+  const [renderBounds, setRenderBounds] = useState(() => map.getBounds().pad(0.35))
   useMapEvents({
-    moveend: () => setView({ zoom: map.getZoom(), bounds: map.getBounds() }),
+    moveend: () => {
+      const bounds = map.getBounds()
+      setView({ zoom: map.getZoom(), bounds })
+      // Keep existing Leaflet polygons through small pans and zooms. Rebuild only
+      // when the user leaves the buffered area or crosses a drawing threshold.
+      setRenderBounds((current) => current.contains(bounds) ? current : bounds.pad(0.35))
+    },
   })
 
   const native = useMemo(() => (cells.length ? getResolution(cells[0].cell_id) : 9), [cells])
@@ -176,7 +210,7 @@ export function HexLayer({
   useEffect(() => {
     const group = L.layerGroup().addTo(map)
     const stops = scenarioMode ? DELTA_STOPS : SCORE_STOPS
-    const area = view.bounds.pad(0.25)
+    const area = renderBounds
     const colorOf = (v: number | null) => (v === null ? NO_DATA_COLOR : rampColor(stops, v))
 
     const isDim = (it: HexItem) => !!highlightIds && !!it.cell && !highlightIds.has(it.id)
@@ -290,7 +324,7 @@ export function HexLayer({
     return () => {
       group.remove()
     }
-  }, [items, view, grouped, points, centerPoints, scenarioMode, tooltipFor, selectedId, selected, map, fillOpacity, res, highlightIds])
+  }, [items, renderBounds, grouped, points, centerPoints, scenarioMode, tooltipFor, selectedId, selected, map, fillOpacity, res, highlightIds])
 
   return null
 }
@@ -310,22 +344,34 @@ export function CrashLayer({
   const map = useMap()
   const [view, setView] = useState(() => ({ zoom: map.getZoom(), bounds: map.getBounds() }))
   const [crashes, setCrashes] = useState<CrashPoint[]>([])
-  useMapEvents({ moveend: () => setView({ zoom: map.getZoom(), bounds: map.getBounds() }) })
+  const viewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useMapEvents({ moveend: () => {
+    if (viewTimer.current) clearTimeout(viewTimer.current)
+    viewTimer.current = setTimeout(() => setView({ zoom: map.getZoom(), bounds: map.getBounds() }), 120)
+  } })
+  useEffect(() => () => { if (viewTimer.current) clearTimeout(viewTimer.current) }, [])
 
   const active = enabled && view.zoom >= POINT_ZOOM
   useEffect(() => {
     if (!active) {
-      setCrashes([])
       return
     }
     const ctrl = new AbortController()
     const b = view.bounds.pad(0.1)
-    const bbox = [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].map((n) => n.toFixed(6)).join(',')
-    api
-      .crashes(bbox, ctrl.signal)
-      .then((r) => {
-        onAvailable(r.available)
-        setCrashes(r.items)
+    const south = Math.floor(b.getSouth() / CRASH_TILE_DEGREES)
+    const north = Math.floor(b.getNorth() / CRASH_TILE_DEGREES)
+    const west = Math.floor(b.getWest() / CRASH_TILE_DEGREES)
+    const east = Math.floor(b.getEast() / CRASH_TILE_DEGREES)
+    const tiles: Array<[number, number]> = []
+    for (let latIndex = south; latIndex <= north; latIndex++) {
+      for (let lngIndex = west; lngIndex <= east; lngIndex++) tiles.push([latIndex, lngIndex])
+    }
+    Promise.all(tiles.map(([latIndex, lngIndex]) => loadCrashTile(latIndex, lngIndex, ctrl.signal)))
+      .then((results) => {
+        onAvailable(results.every((r) => r.available))
+        const visible = results.flatMap((r) => r.items).filter((c) => b.contains([c.lat, c.lng]))
+        const next = [...new Map(visible.map((c) => [c.crash_id, c])).values()]
+        setCrashes((current) => current.length === next.length && current.every((c, i) => c.crash_id === next[i]?.crash_id) ? current : next)
       })
       .catch(() => {
         /* aborted or backend unreachable: keep the hexagons */

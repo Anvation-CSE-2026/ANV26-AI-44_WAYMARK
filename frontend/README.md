@@ -46,7 +46,9 @@ The app is served at <http://localhost:5173>. During development, Vite forwards 
 | `/audit-list` | Searchable, sortable emerging-risk cell list with CSV download. |
 | `/about` | Methodology, map interpretation, limitations, and attribution. |
 | `/auth` | Sign-in and account creation. |
-| `/region/:regionId` | Region report, assistant, and measure progress workspace. |
+| `/settings` | Signed-in profile and password settings. |
+| `/incident-reports` | City Planner queue for reviewing reported incidents. |
+| `/region/:regionId` | Region analysis and measure progress workspace, with a floating Assistant chat. |
 
 A cell can be opened directly, for example `/map?cell=89446ca89d7ffff`.
 
@@ -58,17 +60,19 @@ A cell can be opened directly, for example `/map?cell=89446ca89d7ffff`.
 - The detail panel explains the selected cell's score and displays estimated blackspot likelihood, crash history, confidence, and available model factors.
 - Scenario controls compare the baseline against night, rain, and low-visibility input conditions. The panel is labeled as a simulation, not a live forecast.
 - The adjusted-risk mode visualizes an overlay based only on verified measures. The current effect weights are placeholders and must be treated as illustrative.
+- Progress projection visualizes an estimate based on active measure stages; it is separate from verified adjusted risk and does not change the trained model score.
+- Incident activity shows pending and confirmed crash or near-miss reports separately from model risk. Traffic Police can report incidents from the map; City Planners review them.
 - OpenStreetMap is the default tile provider. MapTiler is optional for alternate street and satellite styles.
 
 ## Region workspace
 
-The region page has three tabs:
+The region page has two tabs and a floating Assistant button:
 
 - **Analysis:** create or open a region report, review summary statistics and hotspot cells, and download PDF or JSON files.
-- **Assistant:** attach a report, ask report-specific questions, and review structured recommendation cards. Cards can be added to the action plan.
 - **Progress:** follow measures through planning, implementation, evidence submission, and planner review. Evidence images can be uploaded and viewed in the measure details.
+- **Assistant:** open the bottom-right chat button to ask questions, attach reports, and review structured recommendation cards. Expand the compact chat to a larger window; report hand-off opens the chat with the selected report attached.
 
-Authentication and role permissions are enforced by the backend. API role IDs are `planner`, `engineer`, and `community`, displayed as City Planner, Road Authorities, and Traffic Police.
+Authentication and role permissions are enforced by the backend. API role IDs are `planner`, `engineer`, and `community`, displayed as City Planners, Road Authorities, and Traffic Police.
 
 ## API integration and mock mode
 

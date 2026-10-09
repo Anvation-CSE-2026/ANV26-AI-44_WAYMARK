@@ -41,9 +41,10 @@ Identify locations that may merit earlier investigation, including places with l
 - **Model evidence:** review backtest metrics, robustness comparisons, and dataset quality checks alongside caveats.
 - **Audit list:** search and sort emerging-risk cells and download the list as CSV.
 - **Region reports:** generate hotspot analysis and download a PDF or JSON report.
-- **AI assistant:** ask questions about an attached report and review structured action recommendations.
+- **AI assistant:** open the floating region chat from Analysis or Progress, ask questions about an attached report, and review structured action recommendations.
 - **Action tracking:** move measures through planned, in-progress, evidence-submitted, and verified states, with photo evidence and planner review.
-- **Adjusted risk overlay:** display estimated score reductions from verified measures. The current effect weights are placeholders and the overlay does not rerun the model.
+- **Measure-based risk overlays:** compare verified adjusted scores with progress-based projections. Both are illustrative overlays using placeholder weights; neither reruns the model.
+- **Incident activity:** Traffic Police can submit crash and near-miss reports; pending reports appear as activity and require City Planner review. Reports do not change the historical model score.
 
 The current scored dataset covers Houston, Texas, using H3 hexagonal cells. The application is a decision-support prototype: its scores are estimates from historical records, not predictions or engineering findings. Human experts make all audit and intervention decisions.
 
@@ -57,7 +58,8 @@ The current scored dataset covers Houston, Texas, using H3 hexagonal cells. The 
 - **Generate region reports:** create a region analysis with summary metrics, hotspot cells, trends, priority issues, caveats, and PDF and JSON downloads.
 - **Ask the assistant:** attach a region report and ask questions. The assistant can provide structured recommendation cards for discussion; without a configured model provider, the application uses a rule-based fallback.
 - **Track measures:** create or propose measures, record progress, attach before-and-after evidence, and ask a planner to approve or reject submitted evidence.
-- **View the adjusted estimate:** see an overlay that applies credit only to verified measures. The overlay is illustrative and does not rerun the risk model.
+- **Report incidents:** Traffic Police can report crashes and near misses from the map. City Planners review submissions; pending and confirmed activity is shown separately from historical model risk.
+- **Interpret score overlays:** compare verified adjusted risk with a progress-based projection; neither changes the trained model score.
 
 ## Project structure
 
@@ -142,7 +144,7 @@ cd frontend
 npm run dev
 ```
 
-Open <http://localhost:5173>. Main routes include `/` (landing page), `/map`, `/evidence`, `/data-quality`, `/audit-list`, `/about`, `/auth`, and `/region/:regionId`.
+Open <http://localhost:5173>. Main routes include `/` (landing page), `/map`, `/evidence`, `/data-quality`, `/audit-list`, `/about`, `/auth`, `/settings`, `/incident-reports`, and `/region/:regionId`.
 
 For a single-server local run, build the frontend and then run FastAPI:
 
@@ -162,7 +164,7 @@ When `frontend/dist/` exists, FastAPI serves the built frontend at <http://127.0
 1. Open the map and select a cell, locality, or grouped H3 region.
 2. Choose **Generate analysis report**. The region page opens with the generated report when the request completes.
 3. Review the summary, hotspot table, trends, priority issues, and caveats. Download a PDF or JSON copy if needed.
-4. Open the Assistant tab. The report is attached when entering from the report flow; users can also attach a report in the chat composer.
+4. Open the floating Assistant from the bottom-right button. Choosing **Ask assistant** on a report attaches it automatically; users can also attach a report in the chat composer.
 5. Ask a question or use a suggested prompt. Recommendation cards can be added to the action plan.
 
 ### Measures and evidence
@@ -171,9 +173,9 @@ Measures progress through `planned`, `in_progress`, `evidence_submitted`, and `v
 
 | Role label | Permission summary |
 | --- | --- |
-| City Planner | Create and review measures; approve or reject evidence; use reports and assistant. |
-| Road Authorities | Create measures, move measures through implementation, and submit evidence; cannot verify. |
-| Traffic Police | Propose measures, comment, and submit evidence; cannot transition or verify measures. |
+| City Planners | Review incident reports, create and assign measures, and verify submitted evidence. |
+| Road Authorities | Update assigned measure progress and submit evidence; cannot verify measures. |
+| Traffic Police | Submit crash and near-miss reports; view incident activity and shared measure progress. |
 
 The role identifiers used by the API are `planner`, `engineer`, and `community`, respectively.
 
@@ -315,13 +317,15 @@ Create a Render **Web Service** connected to the repository. Use the repository 
 
 WAYMARK stores production records in Supabase Postgres and report/evidence files in a private Supabase Storage bucket. Render hosts only the API. Local development and tests continue to use SQLite and the local `data/` directory when `DATABASE_URL` is unset.
 
-Before cutover, create a Supabase project and apply the checked-in schema migration from the repository root:
+Before cutover, create a Supabase project and apply its schema once. For CLI-managed deployments, use the ordered migrations:
 
 ```sh
 supabase login
 supabase link --project-ref <your-project-ref>
 supabase db push --linked
 ```
+
+For a fresh project set up manually in the Supabase SQL Editor, run [`supabase/schema.sql`](supabase/schema.sql) once instead. It is a consolidated bootstrap snapshot of the current schema; do not run it on a project with existing data or in addition to the timestamped migrations. SQL Editor changes do not populate Supabase migration history, so reconcile that history before switching a manually initialized project to `supabase db push`. Keep the timestamped files in `supabase/migrations/` for existing projects and future incremental changes.
 
 On Render, configure these environment variables in the service dashboard. Use the Supabase **session pooler** connection string for Render if its outbound network needs IPv4; the backend accepts `postgresql://` and uses the `psycopg` driver. Keep the service-role key private. The application creates the `waymark-files` bucket as private during import if it does not exist.
 

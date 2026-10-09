@@ -233,17 +233,17 @@ export function AnalysisTab({
 
   return (
     <div className="space-y-7 pb-6">
-      <div ref={actionRef} className="scroll-mt-24 flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-br from-navy via-navy to-[#263b60] px-5 py-5 text-ivory shadow-card sm:px-7 sm:py-6">
-        <div className="flex items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/10 text-brass-soft"><BarChart3 aria-hidden="true" className="h-5 w-5" /></span>
+      <div ref={actionRef} className="scroll-mt-24 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-br from-navy via-navy to-[#263b60] px-4 py-3.5 text-ivory shadow-card sm:px-5 sm:py-4">
+        <div className="flex items-start gap-2.5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/15 bg-white/10 text-brass-soft"><BarChart3 aria-hidden="true" className="h-4 w-4" /></span>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brass-soft">Regional safety intelligence</p>
-            <h2 className="mt-1 font-serif text-2xl font-bold sm:text-3xl">Area analysis</h2>
-            <p className="mt-1 max-w-xl text-sm leading-relaxed text-ivory/70">Review hotspots, crash patterns, and priority issues for this region.</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brass-soft">Regional safety intelligence</p>
+            <h2 className="mt-0.5 font-serif text-xl font-bold sm:text-2xl">Area analysis</h2>
+            <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-ivory/70 sm:text-sm">Hotspots, crash patterns, and priorities.</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={() => void generate()} disabled={working} className="inline-flex items-center gap-2 rounded-xl bg-brass px-4 py-3 text-sm font-bold text-navy shadow-sm transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-60">
+          <button type="button" onClick={() => void generate()} disabled={working} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-brass px-3.5 py-2 text-sm font-bold text-navy shadow-sm transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-60">
             <Sparkles aria-hidden="true" className="h-4 w-4" />{report ? 'Generate new report' : 'Generate report'}
           </button>
           <p role="status" aria-live="polite" className="min-h-5 w-full text-right text-xs font-medium text-ivory/70 sm:w-auto">{working ? message : ''}</p>

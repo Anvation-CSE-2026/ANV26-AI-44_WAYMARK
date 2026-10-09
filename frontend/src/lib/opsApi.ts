@@ -117,8 +117,8 @@ export const opsApi = {
     const raw = (await request('GET', '/api/cells', {
       params: { bbox: `${b.south},${b.west},${b.north},${b.east}`, limit, include_locality: includeLocality },
       signal,
-    })) as { items?: Array<{ cell_id: string; locality?: string | null; risk_score: number | null; n_past_crashes: number; measures?: CellMeasureBrief[] }> }
-    return (raw.items ?? []).map((c) => ({ cell_id: c.cell_id, locality: c.locality ?? null, risk_score: c.risk_score, n_past_crashes: c.n_past_crashes }))
+    })) as { items?: Array<{ cell_id: string; locality?: string | null; street_name?: string | null; risk_score: number | null; n_past_crashes: number; measures?: CellMeasureBrief[] }> }
+    return (raw.items ?? []).map((c) => ({ cell_id: c.cell_id, locality: c.locality ?? null, street_name: c.street_name ?? null, risk_score: c.risk_score, n_past_crashes: c.n_past_crashes }))
   },
 
   // ---- chat

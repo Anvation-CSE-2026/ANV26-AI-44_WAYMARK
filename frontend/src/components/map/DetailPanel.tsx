@@ -154,7 +154,7 @@ export function DetailPanel({ cellId, detail, loading, error, onRetry, onClose, 
             <div>
               {detail.history_percentile !== null ? (
                 <p className="font-serif text-xl font-bold leading-snug">
-                  Riskier than {Math.round(detail.history_percentile)}% of similar cells
+                  Historically riskier than {Math.round(detail.history_percentile)}% of similar cells
                 </p>
               ) : (
                 <p className="font-serif text-lg font-bold leading-snug">Similar-cell comparison unavailable</p>
@@ -170,12 +170,38 @@ export function DetailPanel({ cellId, detail, loading, error, onRetry, onClose, 
             </div>
 
             <dl className="grid grid-cols-2 gap-2">
-              <Stat label="Blackspot likelihood" value={fmtProb(detail.baseline_prob)} primary />
+              <Stat
+                label={scenario ? `${scenarioLabel} likelihood · estimate` : 'Blackspot likelihood'}
+                value={fmtProb(scenario ? scenario.scenario : detail.baseline_prob)}
+                primary
+              />
               <Stat label="Past crashes" value={fmtInt(detail.n_past_crashes)} />
               <Stat label="Baseline" value={fmtNum(detail.risk_score, 3)} />
               <Stat label="Verified" value={fmtNum(detail.adjusted_risk_score, 3)} />
               <Stat label="Projected · est." value={fmtNum(detail.projected_risk_score, 3)} />
             </dl>
+            {scenario && (
+              <section aria-live="polite" className="rounded-lg border border-brass/50 bg-brass/10 px-3 py-2.5">
+                <h3 className="text-sm font-bold">{scenarioLabel} scenario · estimate</h3>
+                <p className="mt-0.5 text-sm">
+                  Baseline {fmtProb(baseline)} <span aria-hidden="true">→</span>{' '}
+                  <span className="font-semibold">{fmtProb(scenario.scenario)}</span>
+                  <span className="ml-2 text-navy/70">({fmtPts(delta)})</span>
+                </p>
+                <details className="mt-1 text-xs text-navy/70">
+                  <summary className="min-h-7 cursor-pointer font-semibold">What this means</summary>
+                  <p className="pb-1">
+                    {delta === null
+                      ? 'No scenario value is available for this cell.'
+                      : delta < 0
+                        ? 'Under this scenario the modelled probability for this cell is lower than its baseline.'
+                        : delta > 0
+                          ? 'Under this scenario the modelled probability for this cell is higher than its baseline.'
+                          : 'Under this scenario the modelled probability for this cell is unchanged.'} Scenario simulation, not a live forecast.
+                  </p>
+                </details>
+              </section>
+            )}
             <section aria-label="Incident activity" className="rounded-xl border border-navy/10 bg-ivory-100 p-2.5">
               <h3 className="text-sm font-bold">Incident activity</h3>
               <dl className="mt-1.5 grid grid-cols-2 gap-1.5 text-sm">
@@ -194,31 +220,6 @@ export function DetailPanel({ cellId, detail, loading, error, onRetry, onClose, 
             )}
 
             <MeasuresSection detail={detail} />
-
-            {scenario && (
-              <section aria-live="polite" className="rounded-lg border border-brass/50 bg-brass/10 px-3 py-3">
-                <h3 className="text-base font-bold">Scenario: {scenarioLabel}</h3>
-                <p className="mt-1 text-lg">
-                  <span className="font-semibold">{fmtProb(baseline)}</span>
-                  <span aria-hidden="true"> → </span>
-                  <span className="sr-only"> to </span>
-                  <span className="font-semibold">{fmtProb(scenario.scenario)}</span>
-                  <span className="ml-2 text-navy/70">({fmtPts(delta)})</span>
-                </p>
-                <details className="mt-1 text-xs text-navy/70">
-                  <summary className="min-h-7 cursor-pointer font-semibold">What this means</summary>
-                  <p className="pb-1">
-                  {delta === null
-                    ? 'No scenario value is available for this cell.'
-                    : delta < 0
-                      ? 'Under this scenario the modelled probability for this cell is lower than its baseline.'
-                      : delta > 0
-                        ? 'Under this scenario the modelled probability for this cell is higher than its baseline.'
-                      : 'Under this scenario the modelled probability for this cell is unchanged.'} Scenario simulation, not a live forecast.
-                  </p>
-                </details>
-              </section>
-            )}
 
             <section>
               <h3 className="mb-1 text-sm font-bold">Score factors</h3>
