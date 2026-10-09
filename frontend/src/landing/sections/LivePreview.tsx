@@ -59,6 +59,13 @@ function ConfidenceBadge({ value }: { value: Confidence }) {
 }
 
 function ShapChart({ cell }: { cell: CellScore }) {
+  if (!cell.factors.length) {
+    return (
+      <p className="text-[11.5px] leading-relaxed text-ink/50">
+        Feature contribution data was not exported for this cell.
+      </p>
+    );
+  }
   const max = Math.max(...cell.factors.map((f) => Math.abs(f.value)));
   return (
     <div role="img" aria-label={`Why this score: factors for cell ${cell.id}. ${cell.factors.map((f) => `${f.name} ${f.value > 0 ? "pushes up" : "pushes down"} by ${Math.abs(f.value)} points`).join("; ")}.`}>
