@@ -175,7 +175,7 @@ export default function RegionPage() {
           {regionQ.error && <ErrorBanner message={regionQ.error} onRetry={regionQ.reload} />}
           {region && (
             <>
-              <h1 className="truncate font-serif text-2xl font-bold leading-tight tracking-[-0.02em] md:text-3xl" title={regionHeading ?? undefined}>{regionHeading}</h1>
+              <h1 className="break-words font-serif text-2xl font-bold leading-tight tracking-[-0.02em] md:text-3xl" title={regionHeading ?? undefined}>{regionHeading}</h1>
               <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ivory/70 sm:text-sm">
                 <span className="font-semibold text-ivory">{region.cell_count.toLocaleString('en-US')} scored cells</span>
                 <span aria-hidden="true" className="text-brass">·</span>

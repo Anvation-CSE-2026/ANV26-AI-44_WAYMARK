@@ -233,7 +233,7 @@ export function AnalysisTab({
 
   return (
     <div className="space-y-7 pb-6">
-      <div ref={actionRef} className="scroll-mt-24 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-br from-navy via-navy to-[#263b60] px-4 py-3.5 text-ivory shadow-card sm:px-5 sm:py-4">
+      <div ref={actionRef} className="scroll-mt-24 flex flex-col items-start justify-between gap-3 rounded-2xl bg-gradient-to-br from-navy via-navy to-[#263b60] px-4 py-3.5 text-ivory shadow-card sm:flex-row sm:items-center sm:px-5 sm:py-4">
         <div className="flex items-start gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/15 bg-white/10 text-brass-soft"><BarChart3 aria-hidden="true" className="h-4 w-4" /></span>
           <div>
@@ -246,7 +246,7 @@ export function AnalysisTab({
           <button type="button" onClick={() => void generate()} disabled={working} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-brass px-3.5 py-2 text-sm font-bold text-navy shadow-sm transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-60">
             <Sparkles aria-hidden="true" className="h-4 w-4" />{report ? 'Generate new report' : 'Generate report'}
           </button>
-          <p role="status" aria-live="polite" className="min-h-5 w-full text-right text-xs font-medium text-ivory/70 sm:w-auto">{working ? message : ''}</p>
+          {working && <p role="status" aria-live="polite" className="w-full text-left text-xs font-medium text-ivory/70 sm:w-auto sm:text-right">{message}</p>}
         </div>
       </div>
 

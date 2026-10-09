@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { MapPin, PanelRightClose, PanelRightOpen, SlidersHorizontal } from 'lucide-react'
+import { MapPin, SlidersHorizontal } from 'lucide-react'
 import { MapContainer, TileLayer, ZoomControl } from 'react-leaflet'
 import { useSearchParams } from 'react-router-dom'
 import { cellToParent } from 'h3-js'
@@ -363,17 +363,12 @@ export default function MapPage() {
       {pickIncidentMode && <p role="status" className="pointer-events-none absolute bottom-4 left-1/2 z-[1040] -translate-x-1/2 rounded-full bg-navy px-3 py-2 text-center text-xs font-semibold text-ivory shadow-card md:bottom-auto md:top-24">Tap map to place report</p>}
 
       {/* Map status and details control stay together in the top-right control row. */}
-      <div className="absolute right-2 top-14 z-[1060] flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-2 md:right-4 md:top-4">
-        {isTrafficPolice && <button type="button" onClick={() => setPickIncidentMode((v) => !v)} aria-pressed={pickIncidentMode}
-          aria-label={pickIncidentMode ? 'Cancel incident location selection' : 'Report a crash or near miss'}
-          className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow-card md:min-h-9 sm:text-sm ${pickIncidentMode ? 'bg-brass text-navy' : 'bg-navy text-ivory'}`}>
-          <MapPin aria-hidden="true" className="h-3.5 w-3.5" /> {pickIncidentMode ? 'Cancel report' : 'Report incident'}
-        </button>}
+      <div className="absolute right-2 top-14 z-[1060] flex max-w-[calc(100%-1rem)] flex-col items-end gap-2 md:right-4 md:top-4 md:flex-row">
         {region ? (
           <button
             type="button"
             onClick={() => setRegion(null)}
-            className="max-w-[min(55vw,24rem)] truncate rounded-full bg-brass px-3 py-1.5 text-xs font-semibold text-navy shadow-card hover:brightness-95 sm:text-sm"
+            className="order-1 max-w-[min(55vw,24rem)] truncate rounded-full bg-brass px-3 py-1.5 text-xs font-semibold text-navy shadow-card hover:brightness-95 sm:text-sm md:order-2"
           >
             {regionCells.length} cells · All regions ×
           </button>
@@ -382,12 +377,12 @@ export default function MapPage() {
             type="button"
             onClick={() => setPlaceSearch(null)}
             title={`${placeSearch.name} · ${displayedCells.length} cells · Clear`}
-            className="max-w-[min(55vw,24rem)] truncate rounded-full bg-brass px-3 py-1.5 text-xs font-semibold text-navy shadow-card hover:brightness-95 sm:text-sm"
+            className="order-1 max-w-[min(55vw,24rem)] truncate rounded-full bg-brass px-3 py-1.5 text-xs font-semibold text-navy shadow-card hover:brightness-95 sm:text-sm md:order-2"
           >
             {placeSearch.name} · {displayedCells.length} cells · Clear ×
           </button>
         ) : (
-          <div className="max-w-[min(55vw,18rem)] truncate rounded-full bg-navy/90 px-3 py-1.5 text-xs font-semibold text-ivory shadow-card sm:text-sm">
+          <div className="order-1 max-w-[min(55vw,18rem)] truncate rounded-full bg-navy/90 px-3 py-1.5 text-xs font-semibold text-ivory shadow-card sm:text-sm md:order-2">
             {level.points
               ? crashesAvailable === false
                 ? 'Cells · crash points unavailable'
@@ -397,15 +392,10 @@ export default function MapPage() {
                 : 'Single cells · zoom for crashes'}
           </div>
         )}
-        {(reportTarget || selectedId) && <button type="button" onClick={() => {
-          const opening = !rightPaneOpen
-          setRightPaneOpen(opening)
-          if (opening && window.matchMedia('(max-width: 767px)').matches) setLeftPaneOpen(false)
-        }} aria-expanded={rightPaneOpen}
-          aria-label={rightPaneOpen ? 'Hide map details' : selectedId ? 'Show cell details' : 'Show region report'}
-          title={rightPaneOpen ? 'Hide details' : selectedId ? 'Cell details' : 'Region report'}
-          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-navy/20 bg-white px-2.5 py-1.5 text-xs font-semibold text-navy shadow-card sm:text-sm">
-          {rightPaneOpen ? <PanelRightClose aria-hidden="true" className="h-4 w-4" /> : <PanelRightOpen aria-hidden="true" className="h-4 w-4" />} {rightPaneOpen ? 'Hide' : selectedId ? 'Details' : 'Report'}
+        {isTrafficPolice && <button type="button" onClick={() => setPickIncidentMode((v) => !v)} aria-pressed={pickIncidentMode}
+          aria-label={pickIncidentMode ? 'Cancel incident location selection' : 'Report a crash or near miss'}
+          className={`order-2 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow-card md:order-1 md:min-h-9 sm:text-sm ${pickIncidentMode ? 'bg-brass text-navy' : 'bg-navy text-ivory'}`}>
+          <MapPin aria-hidden="true" className="h-3.5 w-3.5" /> {pickIncidentMode ? 'Cancel report' : 'Report incident'}
         </button>}
       </div>
 
