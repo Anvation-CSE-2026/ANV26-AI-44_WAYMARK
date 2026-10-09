@@ -38,7 +38,9 @@ else:
     # Avoid leaving local checks and app startup waiting on an unreachable or unhealthy
     # database for libpq's much longer default connection timeout.
     engine = create_engine(
-        str(url),
+        # Pass SQLAlchemy's URL object directly. ``str(url)`` hides the password as
+        # ``***``, which would make the driver authenticate with the masked value.
+        url,
         pool_pre_ping=True,
         pool_size=3,
         max_overflow=0,
