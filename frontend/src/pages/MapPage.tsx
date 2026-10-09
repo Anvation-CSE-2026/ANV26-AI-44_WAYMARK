@@ -460,7 +460,7 @@ export default function MapPage() {
       </div>
 
       {(reportTarget || selectedId) && rightPaneOpen && (
-        <div className={`pointer-events-none absolute inset-x-2 z-[1000] flex flex-col gap-3 md:inset-x-auto md:right-4 md:w-[26rem] ${
+        <div className={`${leftPaneOpen ? 'max-md:hidden' : ''} pointer-events-none absolute inset-x-2 z-[1000] flex flex-col gap-3 md:inset-x-auto md:right-4 md:w-[26rem] ${
           selectedId ? 'bottom-2 h-[55dvh] max-h-[520px] min-h-[280px] md:bottom-4 md:top-16 md:h-auto md:max-h-none' : 'top-24 bottom-2 md:top-16'
         }`}>
           {reportTarget && (
