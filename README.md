@@ -17,7 +17,7 @@ Identify locations that may merit earlier investigation, including places with l
 
 </div>
 
-> Decision support only. Human experts decide. Risk scores are estimates from historical records, not predictions or engineering findings.
+> Decision support only. Human experts decide. Risk scores are estimates from historical records.
 
 ## At a glance
 
