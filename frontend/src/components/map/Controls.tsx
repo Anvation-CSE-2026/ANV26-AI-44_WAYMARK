@@ -36,7 +36,7 @@ interface FilterCardProps {
   maxPastLimit: number
   shown: number
   total: number
-  onPlaceSearch: (query: string, prefix?: boolean) => Promise<PlaceSearchItem[]>
+  onPlaceSearch: (query: string, prefix?: boolean, signal?: AbortSignal) => Promise<PlaceSearchItem[]>
   onPlaceSelect: (place: PlaceSearchItem) => void
 }
 
@@ -60,27 +60,31 @@ export function FilterCard({
   const searchFormRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
-    if (!suggestionsOpen || !goto.trim()) return
-    let current = true
     const query = goto.trim()
+    if (!suggestionsOpen || query.length < 2) {
+      setPlaces([])
+      setSearching(false)
+      return
+    }
+    const controller = new AbortController()
     const timer = window.setTimeout(async () => {
       setSearching(true)
       setPlaceError(null)
       try {
-        const found = await onPlaceSearch(query, true)
-        if (!current) return
+        const found = await onPlaceSearch(query, true, controller.signal)
+        if (controller.signal.aborted) return
         setPlaces(found.slice(0, 3))
         if (!found.length) setPlaceError(`No matching region found for “${query}”.`)
       } catch (error) {
-        if (!current) return
+        if (controller.signal.aborted) return
         setPlaces([])
         setPlaceError(error instanceof Error ? error.message : 'Place search failed.')
       } finally {
-        if (current) setSearching(false)
+        if (!controller.signal.aborted) setSearching(false)
       }
     }, 220)
     return () => {
-      current = false
+      controller.abort()
       window.clearTimeout(timer)
     }
   }, [goto, suggestionsOpen, onPlaceSearch])
@@ -106,7 +110,7 @@ export function FilterCard({
     try {
       const found = await Promise.all(defaults.map(async (query) => {
         try {
-          const matches = await onPlaceSearch(query)
+          const matches = await onPlaceSearch(query, true)
           return matches.find((place) => place.name.toLowerCase() === query.toLowerCase()) ?? matches[0] ?? null
         } catch {
           return null
@@ -197,7 +201,7 @@ export function FilterCard({
             setSearching(true)
             setPlaceError(null)
             try {
-              const found = await onPlaceSearch(query)
+              const found = await onPlaceSearch(query, true)
               setPlaces(found.slice(0, 3))
               if (found.length === 1) onPlaceSelect(found[0])
               if (!found.length) setPlaceError(`No matching locality found for “${query}”.`)

@@ -96,6 +96,8 @@ def main() -> int:
     out.to_sql("crashes", con, if_exists="append", index=False, chunksize=50_000)
     con.execute("CREATE INDEX ix_crashes_lat_lng ON crashes(lat, lng)")
     con.execute("CREATE INDEX ix_crashes_cell ON crashes(cell_id)")
+    for column in ("city", "county", "zipcode", "street"):
+        con.execute(f"CREATE INDEX ix_crashes_{column}_nocase ON crashes({column} COLLATE NOCASE)")
     con.commit()
     con.close()
 

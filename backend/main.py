@@ -15,6 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .config import settings
 from .config_loader import get_effects
 from .db import DB_PATH, configure_sqlite, engine
+from .localities import ensure_locality_indexes
 from .models_ops import create_ops_tables
 from .routes import (audit, auth, cells, chat, crashes, evidence, measures, places, regions, reports, system,
                      validation, whatif)
@@ -27,6 +28,7 @@ async def lifespan(_: FastAPI):
     get_effects()                                  # refuse to start on a malformed effects.json
     if DB_PATH.exists():                           # never let SQLite create an empty database by accident
         configure_sqlite()                         # configure concurrency before serving requests
+        ensure_locality_indexes(engine)             # make locality autocomplete prefix searches index-backed
         create_ops_tables(engine)                  # new tables only; existing tables are left alone
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     yield

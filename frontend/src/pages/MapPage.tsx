@@ -249,7 +249,7 @@ export default function MapPage() {
   const panelOpen = !!selectedId
   const demoDetail = demoStep !== null && detail?.cell_id === DEMO_CELLS[demoStep] ? detail : null
   const searchPlaces = useCallback(
-    (query: string, prefix = false) => api.places(query, undefined, prefix),
+    (query: string, prefix = false, signal?: AbortSignal) => api.places(query, signal, prefix),
     [],
   )
   const selectPlace = (place: PlaceSearchItem) => {
